@@ -1,0 +1,13 @@
+node_modules/
+npm-debug.log*
+server*.log
+static-server*.log
+docs-server*.log
+preview*.png
+reference*.png
+.env
+.DS_Store
+dist/
+coverage/
+android/
+ios/

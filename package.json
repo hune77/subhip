@@ -1,0 +1,26 @@
+{
+  "name": "surf-forecast-app",
+  "version": "1.0.0",
+  "description": "Beginner-friendly surf forecast app for Busan spots using Open-Meteo data.",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "keywords": [
+    "surf",
+    "forecast",
+    "open-meteo",
+    "express"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "node-cron": "^4.2.1"
+  }
+}

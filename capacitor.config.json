@@ -1,0 +1,8 @@
+{
+  "appId": "com.codex.surfforecast",
+  "appName": "Surf Forecast",
+  "webDir": "client",
+  "server": {
+    "cleartext": true
+  }
+}

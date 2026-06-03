@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>섭힙</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">SUBHIP SURF INDEX</p>
+        <h1>섭힙</h1>
+        <p class="top-copy">부산 서퍼용 파도 시그널. 파고, 주기, 바람을 묶어서 입수 타이밍을 잡습니다.</p>
+      </div>
+      <button class="icon-button" id="refreshButton" type="button" aria-label="예보 새로고침">
+        <i class="ph ph-arrow-clockwise"></i>
+      </button>
+    </header>
+
+    <main>
+      <section class="spot-switch" id="spotSwitch" aria-label="스팟 선택"></section>
+
+      <section id="statusArea"></section>
+
+      <section class="best-summary" id="bestSummary"></section>
+
+      <section class="hero-card" id="todayCard" aria-live="polite"></section>
+
+      <section class="criteria-card" id="criteriaCard"></section>
+
+      <section class="date-strip" id="dateStrip" aria-label="날짜 선택"></section>
+
+      <section class="section-block" id="hourlySection">
+        <div class="section-title">
+          <div>
+            <p class="section-kicker">MARKET HOURS</p>
+            <h2>시간별 파도 차트</h2>
+          </div>
+          <span id="selectedDateLabel"></span>
+        </div>
+        <div class="hourly-list" id="hourlyList"></div>
+      </section>
+
+      <section class="detail-grid" id="detailGrid"></section>
+
+      <section class="raw-panel" id="rawSection">
+        <button class="raw-toggle" id="rawToggle" type="button">
+          <span>원본 수치 보기</span>
+          <i class="ph ph-caret-down"></i>
+        </button>
+        <pre id="rawData" hidden></pre>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="하단 메뉴">
+      <a href="#todayCard"><i class="ph ph-house"></i><span>홈</span></a>
+      <a href="#hourlySection"><i class="ph ph-chart-line"></i><span>차트</span></a>
+      <a href="#rawSection"><i class="ph ph-database"></i><span>데이터</span></a>
+    </nav>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
