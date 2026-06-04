@@ -1,26 +1,80 @@
-const API_BASE_URL = window.SURF_API_BASE_URL || "";
 const MARINE_API_URL = "https://marine-api.open-meteo.com/v1/marine";
 const WEATHER_API_URL = "https://api.open-meteo.com/v1/forecast";
 const TIMEZONE = "Asia/Seoul";
 
-const STATIC_SPOTS = [
+const SPOTS = [
   {
-    id: "songjeong",
-    name: "송정",
-    fullName: "송정해수욕장",
-    latitude: 35.1786,
-    longitude: 129.1997,
+    id: "songjeong-lastwave",
+    region: "songjeong",
+    name: "라스트웨이브",
+    shortName: "라스트",
+    fullName: "송정 라스트웨이브 앞",
+    latitude: 35.1787,
+    longitude: 129.1992,
     beachFacingAngle: 135,
-    note: "부산 대표 서핑 스팟"
+    idealSwellFrom: 315,
+    tidePreference: "mid-high",
+    beginnerRiskHeight: 1.5,
+    note: "송정 남동향 기준. 북서 계열에서 들어오는 정스웰과 약한 오프쇼어를 우선합니다."
   },
   {
-    id: "dadaepo",
-    name: "다대포",
-    fullName: "다대포해수욕장",
-    latitude: 35.0471,
-    longitude: 128.9673,
+    id: "songjeong-surfholic",
+    region: "songjeong",
+    name: "서프홀릭",
+    shortName: "서프홀릭",
+    fullName: "송정 서프홀릭 앞",
+    latitude: 35.1793,
+    longitude: 129.2000,
+    beachFacingAngle: 135,
+    idealSwellFrom: 315,
+    tidePreference: "mid-high",
+    beginnerRiskHeight: 1.5,
+    note: "송정 남동향 기준. 0.5m 이상 정스웰이면 롱보드 기준 탈만한 시간대로 봅니다."
+  },
+  {
+    id: "dadaepo-morundae",
+    region: "dadaepo",
+    name: "몰운대",
+    shortName: "몰운대",
+    fullName: "다대포 몰운대 포인트",
+    latitude: 35.0464,
+    longitude: 128.9647,
     beachFacingAngle: 180,
-    note: "넓은 해변과 긴 라인업을 보는 스팟"
+    idealSwellFrom: 180,
+    tidePreference: "mid-high",
+    beginnerRiskHeight: 1.6,
+    note: "Left breaking 성향. 다대포 세 포인트 중 파도가 비교적 작게 들어오는 편으로 봅니다.",
+    mapImage: "./assets/dadaepo-points.jpg"
+  },
+  {
+    id: "dadaepo-mid",
+    region: "dadaepo",
+    name: "미드",
+    shortName: "미드",
+    fullName: "다대포 미드 포인트",
+    latitude: 35.0469,
+    longitude: 128.9687,
+    beachFacingAngle: 180,
+    idealSwellFrom: 180,
+    tidePreference: "mid-high",
+    beginnerRiskHeight: 1.6,
+    note: "가장 많은 서퍼가 타는 구간. 간조에는 빠르게 닫히고, 중물~만조에 롱보드 컨디션이 좋아지는 쪽으로 봅니다.",
+    mapImage: "./assets/dadaepo-points.jpg"
+  },
+  {
+    id: "dadaepo-songan",
+    region: "dadaepo",
+    name: "송안",
+    shortName: "송안",
+    fullName: "다대포 송안 포인트",
+    latitude: 35.0479,
+    longitude: 128.9725,
+    beachFacingAngle: 180,
+    idealSwellFrom: 180,
+    tidePreference: "low-mid",
+    beginnerRiskHeight: 1.4,
+    note: "라인업이 멀고 조류 대응이 필요합니다. 초보자 입수 비추천. Mid-Low~Low-Mid 구간을 우선합니다.",
+    mapImage: "./assets/dadaepo-points.jpg"
   }
 ];
 
@@ -28,7 +82,7 @@ const state = {
   loading: true,
   error: null,
   data: null,
-  currentSpotId: "songjeong",
+  currentSpotId: "songjeong-lastwave",
   selectedDate: null,
   showRaw: false,
   listeners: []
@@ -58,6 +112,14 @@ function setState(patch) {
   state.listeners.forEach((listener) => listener());
 }
 
+function buildQuery(params) {
+  return new URLSearchParams(params).toString();
+}
+
+function at(list, index) {
+  return Array.isArray(list) ? list[index] : null;
+}
+
 function formatDay(dateString) {
   return new Intl.DateTimeFormat("ko-KR", {
     weekday: "short",
@@ -78,6 +140,22 @@ function trendIcon(rating) {
   return "ph-trend-down";
 }
 
+function normalizeAngle(angle) {
+  if (typeof angle !== "number" || Number.isNaN(angle)) return null;
+  return ((((angle + 180) % 360) + 360) % 360) - 180;
+}
+
+function angularDistance(a, b) {
+  const diff = normalizeAngle(a - b);
+  return diff === null ? 180 : Math.abs(diff);
+}
+
+function directionArrow(deg) {
+  if (deg === null || deg === undefined) return "-";
+  const arrows = ["↓", "↙", "←", "↖", "↑", "↗", "→", "↘"];
+  return arrows[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+}
+
 function getCurrentSpot() {
   if (!state.data) return null;
   return state.data.spots.find((spot) => spot.id === state.currentSpotId) || state.data.spots[0];
@@ -90,8 +168,7 @@ function getSelectedHours() {
 }
 
 function getBestHourForSelectedDate() {
-  const hours = getSelectedHours();
-  return hours.reduce((best, item) => {
+  return getSelectedHours().reduce((best, item) => {
     if (!best || item.translated.score > best.translated.score) return item;
     return best;
   }, null);
@@ -100,38 +177,249 @@ function getBestHourForSelectedDate() {
 function getOverallBestHour() {
   const spot = getCurrentSpot();
   if (!spot) return null;
-
   return spot.hourly.reduce((best, item) => {
     if (!best || item.translated.score > best.translated.score) return item;
     return best;
   }, null);
 }
 
-function conditionChecks(item) {
-  const wavePass = item.wave_height >= 0.9;
-  const periodPass = item.wave_period >= 7;
-  const windPass = item.translated.wind_type === "오프쇼어";
+function classifyWind(windDirection, beachFacingAngle) {
+  if (windDirection === null || windDirection === undefined) {
+    return {
+      wind_type: "바람 정보 없음",
+      wind_comment: "바람 방향 데이터가 없어 파도 면 상태를 판단하지 않았습니다."
+    };
+  }
 
-  return [
-    {
-      key: "wave",
-      label: "파고",
-      passed: wavePass,
-      value: `${item.wave_height ?? "-"}m`
-    },
-    {
-      key: "period",
-      label: "주기",
-      passed: periodPass,
-      value: `${item.wave_period ?? "-"}s`
-    },
-    {
-      key: "wind",
-      label: "바람",
-      passed: windPass,
-      value: item.translated.wind_type
-    }
+  const onshoreDiff = angularDistance(windDirection, beachFacingAngle);
+  const offshoreDiff = angularDistance(windDirection, (beachFacingAngle + 180) % 360);
+
+  if (offshoreDiff <= 60) {
+    return {
+      wind_type: "오프쇼어",
+      wind_comment: "해변에서 바다로 부는 바람입니다. 파도 면이 정리될 가능성이 높습니다."
+    };
+  }
+
+  if (onshoreDiff <= 60) {
+    return {
+      wind_type: "온쇼어",
+      wind_comment: "바다에서 해변으로 부는 바람입니다. 강하면 파도가 빨리 무너지고 지저분해집니다."
+    };
+  }
+
+  return {
+    wind_type: "사이드 바람",
+    wind_comment: "해변을 비스듬히 가르는 바람입니다. 강하면 라인 잡기가 어려울 수 있습니다."
+  };
+}
+
+function classifySwell(frame, spot) {
+  const diff = angularDistance(frame.wave_direction, spot.idealSwellFrom);
+
+  if (diff <= 45) {
+    return {
+      type: "정스웰",
+      passed: true,
+      diff,
+      comment: "파도 방향이 스팟이 받는 주 방향과 잘 맞습니다."
+    };
+  }
+
+  if (diff <= 90) {
+    return {
+      type: "비스듬한 스웰",
+      passed: frame.wave_height >= 0.8,
+      diff,
+      comment: "방향은 살짝 비껴갑니다. 사이즈가 받쳐주면 탈 수 있습니다."
+    };
+  }
+
+  return {
+    type: "역스웰",
+    passed: false,
+    diff,
+    comment: "차트보다 체감 파도가 약하게 들어올 가능성이 큽니다."
+  };
+}
+
+function classifyTide(frame, spot) {
+  if (frame.sea_level_height_msl === null || frame.sea_level_height_msl === undefined) {
+    return {
+      type: "조위 없음",
+      passed: false,
+      comment: "조위 데이터가 없어 타이드 판단은 제외했습니다."
+    };
+  }
+
+  const tide = frame.tide_phase || "unknown";
+  if (spot.tidePreference === "low-mid") {
+    const passed = tide === "low" || tide === "mid";
+    return {
+      type: tideLabel(tide),
+      passed,
+      comment: passed ? "송안 기준으로 선호하는 Low~Mid 구간입니다." : "송안은 만조 전후보다 Low~Mid 구간을 우선합니다."
+    };
+  }
+
+  const passed = tide === "mid" || tide === "high";
+  return {
+    type: tideLabel(tide),
+    passed,
+    comment: passed ? "중물~만조권으로 롱보드 기준 유리하게 봅니다." : "간조권이라 빠르게 닫히거나 얕아질 수 있습니다."
+  };
+}
+
+function tideLabel(tide) {
+  if (tide === "high") return "만조권";
+  if (tide === "mid") return "중물";
+  if (tide === "low") return "간조권";
+  return "조위 애매";
+}
+
+function translateWaveHeight(height, spot) {
+  if (height === null || height === undefined) return "파고 데이터가 아직 없습니다.";
+
+  if (spot.region === "songjeong") {
+    if (height < 0.4) return "송정 기준으로 작습니다. 패들 연습이나 소프트보드 정도로 보세요.";
+    if (height < 0.5) return "작지만 정스웰이면 롱보드로 겨우 탈 수 있는 구간입니다.";
+    if (height < 0.8) return "정스웰이면 롱보드 기준 탈만합니다. 한국 기준으로는 나쁘지 않습니다.";
+    if (height < 1.5) return "송정 기준 좋은 사이즈입니다. 바람만 약하면 충분히 즐길 만합니다.";
+    return "송정 기준 큽니다. 초보자는 위험할 수 있습니다.";
+  }
+
+  if (height < 0.7) return "다대포 기준 작습니다. 포인트와 타이드가 받쳐줘야 합니다.";
+  if (height < 1.0) return "다대포 기준 애매하지만 남스웰과 약한 바람이면 롱보드 가능성이 있습니다.";
+  if (height < 1.8) return "다대포 기준 좋은 사이즈입니다. 남스웰, 6m/s 이하 바람이면 우선 확인할 만합니다.";
+  return "다대포 기준 큽니다. 조류와 라인업 거리까지 고려해야 합니다.";
+}
+
+function translateWavePeriod(period, spot) {
+  if (period === null || period === undefined) return "주기 데이터가 아직 없습니다.";
+
+  if (spot.region === "songjeong") {
+    if (period >= 9) return "송정은 긴 피리어드가 덤프 성향을 만들 수 있습니다. 무조건 가산하지 않습니다.";
+    if (period >= 6) return "송정 기준 무난한 주기입니다. 파고와 스웰 방향이 더 중요합니다.";
+    return "주기가 짧아 힘이 약할 수 있습니다.";
+  }
+
+  if (period >= 7) return "다대포 기준 통과 주기입니다. 사이즈와 남스웰이면 좋은 후보입니다.";
+  if (period >= 6) return "다대포 기준 최소권입니다. 다른 조건이 좋아야 합니다.";
+  return "다대포 기준 주기가 짧습니다.";
+}
+
+function getSuitRecommendation(temp) {
+  if (temp === null || temp === undefined) return "수온 확인 후 웻슈트를 결정하세요.";
+  if (temp <= 14) return "5/4mm 풀슈트 + 부츠 + 글러브";
+  if (temp <= 18) return "3/2mm 풀슈트";
+  if (temp <= 22) return "스프링슈트 또는 얇은 풀슈트";
+  return "보드숏 또는 래시가드";
+}
+
+function scoreHour(frame, spot) {
+  const wind = classifyWind(frame.wind_direction_10m, spot.beachFacingAngle);
+  const swell = classifySwell(frame, spot);
+  const tide = classifyTide(frame, spot);
+  let score = 42;
+
+  if (spot.region === "songjeong") {
+    if (frame.wave_height >= 0.5) score += 16;
+    if (frame.wave_height >= 0.8) score += 18;
+    if (frame.wave_height >= 1.5) score -= 18;
+    if (swell.type === "정스웰") score += 24;
+    else if (swell.type === "비스듬한 스웰") score += 8;
+    else score -= 18;
+    if (frame.wave_period >= 6 && frame.wave_period < 9) score += 8;
+    if (frame.wave_period >= 9) score -= 8;
+  } else {
+    if (frame.wave_height >= 0.9) score += 18;
+    if (frame.wave_height >= 1.0) score += 16;
+    if (frame.wave_height >= 1.8) score -= 8;
+    if (swell.type === "정스웰") score += 22;
+    else if (swell.type === "비스듬한 스웰") score += 6;
+    else score -= 16;
+    if (frame.wave_period >= 7) score += 14;
+    else if (frame.wave_period >= 6) score += 5;
+    else score -= 10;
+  }
+
+  if (wind.wind_type === "오프쇼어") score += frame.wind_speed_10m <= 5 ? 16 : 8;
+  if (wind.wind_type === "온쇼어") score -= frame.wind_speed_10m >= 6 ? 24 : 12;
+  if (frame.wind_speed_10m <= 5) score += 6;
+  if (frame.wind_speed_10m >= 10) score -= 24;
+  if (tide.passed) score += spot.region === "dadaepo" ? 10 : 4;
+  if (spot.region === "dadaepo" && frame.precipitation >= 1) score -= 6;
+  if (spot.region === "dadaepo" && frame.precipitation >= 5) score -= 20;
+
+  if (frame.wave_height < 0.5 && spot.region === "songjeong") score = Math.min(score, 58);
+  if (frame.wave_height < 0.9 && spot.region === "dadaepo") score = Math.min(score, 62);
+  if (wind.wind_type === "온쇼어" && frame.wind_speed_10m >= 6) score = Math.min(score, 58);
+  if (frame.wind_speed_10m >= 10) score = Math.min(score, 45);
+  if (spot.region === "dadaepo" && frame.precipitation >= 5) score = Math.min(score, 55);
+  if (spot.id === "dadaepo-songan" && frame.translated?.rating !== "좋음") score = Math.min(score, 74);
+
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function ratingFromScore(score) {
+  if (score >= 72) return "좋음";
+  if (score >= 52) return "보통";
+  return "별로";
+}
+
+function translateFrame(frame, spot) {
+  const wind = classifyWind(frame.wind_direction_10m, spot.beachFacingAngle);
+  const swell = classifySwell(frame, spot);
+  const tide = classifyTide(frame, spot);
+  const score = scoreHour(frame, spot);
+  const rating = ratingFromScore(score);
+
+  return {
+    score,
+    rating,
+    signal: signalColor(score),
+    wave_height_text: translateWaveHeight(frame.wave_height, spot),
+    wave_period_text: translateWavePeriod(frame.wave_period, spot),
+    water_temperature_text: frame.sea_surface_temperature === null ? "수온 데이터가 아직 없습니다." : "수온 기준 웻슈트 선택을 참고하세요.",
+    suit_recommendation: getSuitRecommendation(frame.sea_surface_temperature),
+    wind_type: wind.wind_type,
+    wind_comment: wind.wind_comment,
+    swell_type: swell.type,
+    swell_comment: swell.comment,
+    tide_type: tide.type,
+    tide_comment: tide.comment,
+    summary: `${rating}: 파고 ${frame.wave_height ?? "-"}m, 주기 ${frame.wave_period ?? "-"}초, ${swell.type}, 바람 ${wind.wind_type}`
+  };
+}
+
+function signalColor(score) {
+  if (score >= 72) return "green";
+  if (score >= 52) return "yellow";
+  return "red";
+}
+
+function conditionChecks(item) {
+  const spot = getCurrentSpot();
+  const swell = classifySwell(item, spot);
+  const tide = classifyTide(item, spot);
+  const wavePass = spot.region === "songjeong" ? item.wave_height >= 0.5 : item.wave_height >= 1.0;
+  const periodPass = spot.region === "songjeong" ? item.wave_period >= 6 && item.wave_period < 9 : item.wave_period >= 6.5;
+  const windPass = item.wind_speed_10m <= 5 || (item.translated.wind_type === "오프쇼어" && item.wind_speed_10m <= 7);
+  const rainPass = spot.region !== "dadaepo" || !item.precipitation || item.precipitation < 1;
+
+  const checks = [
+    { key: "wave", label: "파고", passed: wavePass, value: `${item.wave_height ?? "-"}m` },
+    { key: "swell", label: "스웰", passed: swell.passed, value: swell.type },
+    { key: "wind", label: "바람", passed: windPass, value: `${item.translated.wind_type} ${item.wind_speed_10m ?? "-"}m/s` },
+    { key: "period", label: "주기", passed: periodPass, value: `${item.wave_period ?? "-"}s` },
+    { key: "tide", label: "조위", passed: tide.passed, value: tide.type }
   ];
+
+  if (spot.region === "dadaepo") {
+    checks.push({ key: "rain", label: "비", passed: rainPass, value: `${item.precipitation ?? 0}mm` });
+  }
+
+  return checks;
 }
 
 function formatBestWindow(item) {
@@ -142,74 +430,12 @@ function formatBestWindow(item) {
 function buildVerdict(best) {
   if (!best) return "데이터 대기 중";
   if (best.translated.rating === "좋음") {
-    return "오늘은 들어갈 명분 있습니다. 파고와 면 상태가 같이 받쳐주는 시간대를 노리세요.";
+    return "한국 기준으로 체크할 만한 시간입니다. 파고, 스웰 방향, 바람 중 핵심 조건이 맞습니다.";
   }
   if (best.translated.rating === "보통") {
-    return "완전한 축제는 아니지만 탈 수는 있습니다. 장비 선택과 타이밍이 중요합니다.";
+    return "완벽하진 않지만 들어갈 명분은 있습니다. 보드 선택과 현장 확인이 중요합니다.";
   }
-  return "오늘은 기대치를 낮추는 쪽입니다. 운동 삼아 들어가거나 다음 스웰을 기다리는 편이 낫습니다.";
-}
-
-function renderBestSummary() {
-  const spot = getCurrentSpot();
-  const overallBest = getOverallBestHour();
-
-  if (state.loading || !spot || !overallBest) {
-    elements.bestSummary.innerHTML = `
-      <div class="summary-card">
-        <p class="section-kicker">OVERALL BEST</p>
-        <h2>전체 최고 추천 계산 중</h2>
-        <p>Open-Meteo 데이터를 가져와 7일 중 가장 괜찮은 시간대를 찾고 있습니다.</p>
-      </div>
-    `;
-    return;
-  }
-
-  elements.bestSummary.innerHTML = `
-    <div class="summary-card">
-      <div>
-        <p class="section-kicker">OVERALL BEST</p>
-        <h2>${formatBestWindow(overallBest)}</h2>
-        <p>${overallBest.translated.rating}, 파고 ${overallBest.wave_height}m, 주기 ${overallBest.wave_period}s, 바람 ${overallBest.translated.wind_type}</p>
-      </div>
-      <div class="summary-score ${ratingClass(overallBest.translated.rating)}">
-        <span>SCORE</span>
-        <strong>${overallBest.translated.score}</strong>
-      </div>
-    </div>
-  `;
-}
-
-function renderCriteriaCard() {
-  const best = getBestHourForSelectedDate();
-
-  if (!best) {
-    elements.criteriaCard.innerHTML = "";
-    return;
-  }
-
-  const checks = conditionChecks(best);
-
-  elements.criteriaCard.innerHTML = `
-    <div class="criteria-head">
-      <div>
-        <p class="section-kicker">JUDGEMENT RULE</p>
-        <h2>판정 기준</h2>
-      </div>
-      <p>파고 0.9m 이상 + 주기 7초 이상 + 오프쇼어면 좋은 파도 후보로 봅니다.</p>
-    </div>
-    <div class="criteria-grid">
-      ${checks
-        .map((check) => `
-          <div class="criteria-chip ${check.passed ? "pass" : "fail"}">
-            <span>${check.label}</span>
-            <strong>${check.value}</strong>
-            <em>${check.passed ? "통과" : "탈락"}</em>
-          </div>
-        `)
-        .join("")}
-    </div>
-  `;
+  return "기대치를 낮추는 구간입니다. 바람, 방향, 타이드 중 한두 조건이 크게 맞지 않습니다.";
 }
 
 function renderStatus() {
@@ -217,7 +443,7 @@ function renderStatus() {
     elements.statusArea.innerHTML = `
       <div class="notice">
         <i class="ph ph-spinner-gap"></i>
-        <span>섭힙 인덱스 계산 중. 파고, 주기, 바람을 묶어서 보는 중입니다.</span>
+        <span>섭힙 인덱스 계산 중. 한국 기준으로 파고, 스웰, 바람, 조위를 묶는 중입니다.</span>
       </div>
     `;
     return;
@@ -245,22 +471,51 @@ function renderStatus() {
   elements.statusArea.innerHTML = `
     <div class="notice">
       <i class="ph ph-pulse"></i>
-      <span>LIVE ${updatedAt} · 서퍼 기준 컨디션 스코어</span>
+      <span>LIVE ${updatedAt} · 한국 스팟 기준 컨디션 스코어 · 조위는 Open-Meteo 참고값</span>
     </div>
   `;
 }
 
 function renderSpotSwitch() {
   const spots = state.data?.spots || [];
-
   elements.spotSwitch.innerHTML = spots
     .map((spot) => `
       <button class="spot-button ${spot.id === state.currentSpotId ? "is-active" : ""}" type="button" data-spot-id="${spot.id}">
-        <span>${spot.name}</span>
-        <small>${spot.id.toUpperCase()}</small>
+        <span>${spot.short_name || spot.name}</span>
+        <small>${spot.region.toUpperCase()}</small>
       </button>
     `)
     .join("");
+}
+
+function renderBestSummary() {
+  const spot = getCurrentSpot();
+  const overallBest = getOverallBestHour();
+
+  if (state.loading || !spot || !overallBest) {
+    elements.bestSummary.innerHTML = `
+      <div class="summary-card">
+        <p class="section-kicker">OVERALL BEST</p>
+        <h2>전체 최고 추천 계산 중</h2>
+        <p>7일 예보에서 가장 괜찮은 시간대를 찾고 있습니다.</p>
+      </div>
+    `;
+    return;
+  }
+
+  elements.bestSummary.innerHTML = `
+    <div class="summary-card">
+      <div>
+        <p class="section-kicker">OVERALL BEST</p>
+        <h2>${formatBestWindow(overallBest)}</h2>
+        <p>${overallBest.translated.rating}, 파고 ${overallBest.wave_height}m, 주기 ${overallBest.wave_period}s, ${overallBest.translated.swell_type}, 바람 ${overallBest.translated.wind_type}</p>
+      </div>
+      <div class="summary-score ${ratingClass(overallBest.translated.rating)}">
+        <span>SCORE</span>
+        <strong>${overallBest.translated.score}</strong>
+      </div>
+    </div>
+  `;
 }
 
 function renderTodayCard() {
@@ -268,20 +523,16 @@ function renderTodayCard() {
   const best = getBestHourForSelectedDate();
 
   if (state.loading || !spot || !best) {
-    elements.todayCard.innerHTML = `
-      <div class="hero-content">
-        <p>예보 데이터를 준비하고 있습니다.</p>
-      </div>
-    `;
+    elements.todayCard.innerHTML = `<div class="hero-content"><p>예보 데이터를 준비하고 있습니다.</p></div>`;
     return;
   }
 
   const pillClass = ratingClass(best.translated.rating);
   const heroTitle =
     best.translated.rating === "좋음"
-      ? `${best.hour} LONG`
+      ? `${best.hour} GO`
       : best.translated.rating === "보통"
-        ? `${best.hour} WAIT`
+        ? `${best.hour} CHECK`
         : `${best.hour} SKIP`;
 
   elements.todayCard.innerHTML = `
@@ -304,16 +555,51 @@ function renderTodayCard() {
       <p class="hero-signal"><span>SUBHIP SIGNAL</span>${buildVerdict(best)}</p>
       <div class="metric-row">
         <div class="metric"><span>WAVE</span><strong>${best.wave_height ?? "-"}m</strong></div>
-        <div class="metric"><span>PERIOD</span><strong>${best.wave_period ?? "-"}s</strong></div>
-        <div class="metric"><span>WIND</span><strong>${best.translated.wind_type}</strong></div>
+        <div class="metric"><span>SWELL</span><strong>${best.translated.swell_type}</strong></div>
+        <div class="metric"><span>TIDE</span><strong>${best.translated.tide_type}</strong></div>
       </div>
+    </div>
+  `;
+}
+
+function renderCriteriaCard() {
+  const spot = getCurrentSpot();
+  const best = getBestHourForSelectedDate();
+  if (!spot || !best) {
+    elements.criteriaCard.innerHTML = "";
+    return;
+  }
+
+  const checks = conditionChecks(best);
+  const criteriaText =
+    spot.region === "songjeong"
+      ? "송정: 0.5m 이상 + 정스웰 + 5m/s 이하 바람을 우선. 긴 피리어드는 덤프 가능성으로 감점."
+      : "다대포: 남스웰 + 1.0m 전후 이상 + 6m/s 이하 바람 + 포인트별 타이드 선호를 우선.";
+
+  elements.criteriaCard.innerHTML = `
+    <div class="criteria-head">
+      <div>
+        <p class="section-kicker">KOREA RULE</p>
+        <h2>판정 기준</h2>
+      </div>
+      <p>${criteriaText}</p>
+    </div>
+    <div class="criteria-grid">
+      ${checks
+        .map((check) => `
+          <div class="criteria-chip ${check.passed ? "pass" : "fail"}">
+            <span>${check.label}</span>
+            <strong>${check.value}</strong>
+            <em>${check.passed ? "통과" : "주의"}</em>
+          </div>
+        `)
+        .join("")}
     </div>
   `;
 }
 
 function renderDateStrip() {
   const spot = getCurrentSpot();
-
   if (!spot) {
     elements.dateStrip.innerHTML = "";
     return;
@@ -331,7 +617,6 @@ function renderDateStrip() {
 
 function renderHourlyList() {
   const hours = getSelectedHours();
-
   elements.selectedDateLabel.textContent = state.selectedDate ? formatDay(state.selectedDate) : "";
 
   if (!hours.length) {
@@ -342,18 +627,15 @@ function renderHourlyList() {
   elements.hourlyList.innerHTML = hours
     .map((item) => {
       const checks = conditionChecks(item);
-
       return `
-        <article class="hour-card">
+        <article class="hour-card signal-${item.translated.signal}">
           <div class="hour-time">${item.hour}</div>
           <div class="hour-main">
             <strong>${item.translated.summary}</strong>
-            <span>${item.translated.wind_comment}</span>
+            <span>${directionArrow(item.wave_direction)} 파향 ${item.wave_direction ?? "-"}° · ${directionArrow(item.wind_direction_10m)} 바람 ${item.wind_speed_10m ?? "-"}m/s · 조위 ${item.sea_level_height_msl ?? "-"}m</span>
             <div class="mini-checks">
               ${checks
-                .map((check) => `
-                  <span class="${check.passed ? "pass" : "fail"}">${check.label} ${check.passed ? "통과" : "탈락"}</span>
-                `)
+                .map((check) => `<span class="${check.passed ? "pass" : "fail"}">${check.label} ${check.passed ? "통과" : "주의"}</span>`)
                 .join("")}
             </div>
           </div>
@@ -365,23 +647,23 @@ function renderHourlyList() {
 }
 
 function renderDetails() {
+  const spot = getCurrentSpot();
   const best = getBestHourForSelectedDate();
-
-  if (!best) {
+  if (!spot || !best) {
     elements.detailGrid.innerHTML = "";
     return;
   }
 
   const cards = [
     {
-      icon: "ph-sparkle",
-      title: "종합 설명",
-      body: buildVerdict(best)
+      icon: "ph-map-pin",
+      title: "스팟 메모",
+      body: spot.note
     },
     {
-      icon: "ph-drop-half",
-      title: "웻슈트",
-      body: best.translated.suit_recommendation
+      icon: "ph-waves",
+      title: best.translated.swell_type,
+      body: best.translated.swell_comment
     },
     {
       icon: "ph-wind",
@@ -389,27 +671,35 @@ function renderDetails() {
       body: best.translated.wind_comment
     },
     {
-      icon: "ph-arrows-split",
-      title: best.break_type,
-      body: best.break_comment
+      icon: "ph-anchor",
+      title: `조위 ${best.translated.tide_type}`,
+      body: `${best.translated.tide_comment} Open-Meteo 조위는 연안 정확도가 제한되어 참고값입니다.`
     },
     {
-      icon: "ph-timer",
-      title: "파도 주기",
-      body: best.translated.wave_period_text
+      icon: "ph-drop-half",
+      title: "웻슈트",
+      body: best.translated.suit_recommendation
     }
   ];
 
+  if (spot.map_image) {
+    cards.unshift({
+      icon: "ph-image",
+      title: "다대포 포인트 지도",
+      body: `<img class="spot-map" src="${spot.map_image}" alt="다대포 포인트 안내">`
+    });
+  }
+
   elements.detailGrid.innerHTML = cards
     .map((card) => `
-        <article class="detail-card">
-          <div class="detail-icon"><i class="ph ${card.icon}"></i></div>
-          <div>
-            <h3>${card.title}</h3>
-            <p>${card.body}</p>
-          </div>
-        </article>
-      `)
+      <article class="detail-card">
+        <div class="detail-icon"><i class="ph ${card.icon}"></i></div>
+        <div>
+          <h3>${card.title}</h3>
+          <p>${card.body}</p>
+        </div>
+      </article>
+    `)
     .join("");
 }
 
@@ -428,193 +718,48 @@ function renderRawData() {
   elements.rawData.textContent = JSON.stringify(payload, null, 2);
 }
 
-function buildQuery(params) {
-  return new URLSearchParams(params).toString();
+function render() {
+  renderStatus();
+  renderSpotSwitch();
+  renderBestSummary();
+  renderTodayCard();
+  renderCriteriaCard();
+  renderDateStrip();
+  renderHourlyList();
+  renderDetails();
+  renderRawData();
+  elements.refreshButton.disabled = state.loading;
 }
 
-function at(list, index) {
-  return Array.isArray(list) ? list[index] : null;
-}
+function assignTidePhases(hourly) {
+  const byDate = hourly.reduce((acc, item) => {
+    if (!acc[item.date]) acc[item.date] = [];
+    acc[item.date].push(item);
+    return acc;
+  }, {});
 
-function normalizeAngle(angle) {
-  if (typeof angle !== "number" || Number.isNaN(angle)) return null;
-  return ((((angle + 180) % 360) + 360) % 360) - 180;
-}
+  Object.values(byDate).forEach((items) => {
+    const values = items
+      .map((item) => item.sea_level_height_msl)
+      .filter((value) => typeof value === "number");
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
 
-function classifyWaveBreak(waveDirection, beachFacingAngle) {
-  const angleDiff = normalizeAngle(waveDirection - beachFacingAngle);
+    items.forEach((item) => {
+      if (typeof item.sea_level_height_msl !== "number") {
+        item.tide_phase = "unknown";
+        return;
+      }
 
-  if (angleDiff === null) {
-    return {
-      angle_diff: null,
-      break_type: "방향 정보 없음",
-      break_comment: "파도 방향 데이터가 없어 브레이크 성향을 판단하지 않았습니다."
-    };
-  }
+      const normalized = (item.sea_level_height_msl - min) / range;
+      if (normalized >= 0.66) item.tide_phase = "high";
+      else if (normalized <= 0.33) item.tide_phase = "low";
+      else item.tide_phase = "mid";
+    });
+  });
 
-  const absDiff = Math.abs(angleDiff);
-
-  if (absDiff <= 15) {
-    return {
-      angle_diff: angleDiff,
-      break_type: "A프레임",
-      break_comment: "정면으로 들어오는 파도라 좌우로 갈라지는 구간을 기대할 수 있습니다."
-    };
-  }
-
-  if (angleDiff < -15 && angleDiff >= -70) {
-    return {
-      angle_diff: angleDiff,
-      break_type: "레프트 성향",
-      break_comment: "오른쪽에서 먼저 부서지는 흐름입니다."
-    };
-  }
-
-  if (angleDiff > 15 && angleDiff <= 70) {
-    return {
-      angle_diff: angleDiff,
-      break_type: "라이트 성향",
-      break_comment: "왼쪽에서 먼저 부서지는 흐름입니다."
-    };
-  }
-
-  return {
-    angle_diff: angleDiff,
-    break_type: "방향 불리",
-    break_comment: "해변 방향과 파도 방향이 많이 어긋나 힘이 약하거나 차피할 수 있습니다."
-  };
-}
-
-function classifyWind(windDirection, beachFacingAngle) {
-  if (windDirection === null || windDirection === undefined) {
-    return {
-      wind_type: "바람 정보 없음",
-      wind_comment: "바람 방향 데이터가 없어 파도 면 상태를 판단하지 않았습니다."
-    };
-  }
-
-  const onshoreDiff = Math.abs(normalizeAngle(windDirection - beachFacingAngle));
-  const offshoreDiff = Math.abs(normalizeAngle(windDirection - ((beachFacingAngle + 180) % 360)));
-
-  if (offshoreDiff <= 60) {
-    return {
-      wind_type: "오프쇼어",
-      wind_comment: "육지에서 바다로 부는 바람입니다. 파도 면이 정리될 가능성이 높습니다."
-    };
-  }
-
-  if (onshoreDiff <= 60) {
-    return {
-      wind_type: "온쇼어",
-      wind_comment: "바다에서 육지로 부는 바람입니다. 파도 면이 지저분하고 힘이 흩어질 수 있습니다."
-    };
-  }
-
-  return {
-    wind_type: "사이드 바람",
-    wind_comment: "해변을 비스듬히 가르는 바람입니다. 강하면 라인 잡기가 어려울 수 있습니다."
-  };
-}
-
-function translateWaveHeight(height) {
-  if (height === null || height === undefined) return "파고 데이터가 아직 없습니다.";
-  if (height < 0.4) return "너무 작습니다. 서핑보다는 패들, 테이크오프 연습 정도로 보는 날입니다.";
-  if (height < 0.8) return "작은 파도입니다. 롱보드나 소프트보드로 가볍게 놀 수는 있지만 좋은 날로 보긴 어렵습니다.";
-  if (height < 1.0) return "탈 수는 있지만 아직 약간 아쉽습니다. 바람과 주기가 좋아야 재미가 납니다.";
-  if (height <= 1.5) return "서핑하기 좋은 크기입니다. 면이 깨끗하면 충분히 즐길 만한 컨디션입니다.";
-  if (height <= 1.8) return "힘 있는 파도입니다. 중급 이상에게는 좋을 수 있지만 라인업과 안전을 확인하세요.";
-  return "큰 파도입니다. 경험자 기준에서도 컨디션과 안전 확인이 먼저입니다.";
-}
-
-function translateWavePeriod(period) {
-  if (period === null || period === undefined) return "주기 데이터가 아직 없습니다.";
-  if (period >= 9) return "주기가 좋아 파도가 힘 있게 밀고 들어올 가능성이 큽니다.";
-  if (period >= 7) return "주기가 무난합니다. 파고가 받쳐주면 충분히 탈 만합니다.";
-  if (period >= 6) return "주기가 짧은 편입니다. 파도가 빨리 무너질 수 있습니다.";
-  return "주기가 짧아 파도가 힘 없이 부서질 가능성이 큽니다.";
-}
-
-function getSuitRecommendation(temp) {
-  if (temp === null || temp === undefined) return "수온 확인 후 웻슈트를 결정하세요.";
-  if (temp <= 14) return "5/4mm 풀슈트 + 부츠 + 글러브";
-  if (temp <= 18) return "3/2mm 풀슈트";
-  if (temp <= 22) return "스프링슈트 또는 얇은 풀슈트";
-  return "보드숏 또는 래시가드";
-}
-
-function getWaveHeightScore(height) {
-  if (height === null || height === undefined) return 0;
-  if (height < 0.4) return -26;
-  if (height < 0.7) return -16;
-  if (height < 0.9) return 0;
-  if (height < 1.0) return 10;
-  if (height <= 1.4) return 30;
-  if (height <= 1.8) return 12;
-  return -14;
-}
-
-function getPeriodScore(period) {
-  if (period === null || period === undefined) return 0;
-  if (period >= 9) return 18;
-  if (period >= 7) return 12;
-  if (period >= 6) return 5;
-  return -12;
-}
-
-function getWindScore(windType, windSpeed) {
-  let score = 0;
-  if (windType === "오프쇼어") score += 16;
-  if (windType === "온쇼어") score -= 18;
-  if (windSpeed === null || windSpeed === undefined) return score;
-  if (windSpeed <= 3) score += 8;
-  else if (windSpeed <= 6) score += 2;
-  else if (windSpeed <= 9) score -= 8;
-  else score -= 18;
-  return score;
-}
-
-function scoreStaticHour(frame, beachFacingAngle) {
-  const wind = classifyWind(frame.wind_direction_10m, beachFacingAngle);
-  let score = 44;
-
-  score += getWaveHeightScore(frame.wave_height);
-  score += getPeriodScore(frame.wave_period);
-  score += getWindScore(wind.wind_type, frame.wind_speed_10m);
-
-  if (frame.wave_height < 0.7) score = Math.min(score, 49);
-  else if (frame.wave_height < 0.9) score = Math.min(score, 62);
-  else if (frame.wave_height < 1.0) score = Math.min(score, 73);
-  if (frame.wave_period < 6) score = Math.min(score, 72);
-  if (frame.wave_period < 7) score = Math.min(score, 73);
-  if (wind.wind_type !== "오프쇼어") score = Math.min(score, 78);
-  if (wind.wind_type !== "오프쇼어" && frame.wave_period < 7) score = Math.min(score, 68);
-  if (wind.wind_type === "온쇼어" && frame.wind_speed_10m >= 4) score = Math.min(score, 70);
-
-  return Math.max(0, Math.min(100, Math.round(score)));
-}
-
-function ratingFromScore(score) {
-  if (score >= 74) return "좋음";
-  if (score >= 52) return "보통";
-  return "별로";
-}
-
-function translateStaticFrame(frame, spot) {
-  const wind = classifyWind(frame.wind_direction_10m, spot.beachFacingAngle);
-  const score = scoreStaticHour(frame, spot.beachFacingAngle);
-  const rating = ratingFromScore(score);
-
-  return {
-    score,
-    rating,
-    wave_height_text: translateWaveHeight(frame.wave_height),
-    wave_period_text: translateWavePeriod(frame.wave_period),
-    water_temperature_text: frame.sea_surface_temperature === null ? "수온 데이터가 아직 없습니다." : "수온 기준 웻슈트 선택을 참고하세요.",
-    suit_recommendation: getSuitRecommendation(frame.sea_surface_temperature),
-    wind_type: wind.wind_type,
-    wind_comment: wind.wind_comment,
-    summary: `${rating}: 파고 ${frame.wave_height ?? "-"}m, 주기 ${frame.wave_period ?? "-"}초, 바람 ${wind.wind_type}`
-  };
+  return hourly;
 }
 
 function buildDailySummaries(hourly) {
@@ -629,7 +774,6 @@ function buildDailySummaries(hourly) {
       if (!best || item.translated.score > best.translated.score) return item;
       return best;
     }, null);
-
     const avgScore = Math.round(items.reduce((sum, item) => sum + item.translated.score, 0) / items.length);
 
     return {
@@ -643,11 +787,11 @@ function buildDailySummaries(hourly) {
   });
 }
 
-async function fetchStaticSpotForecast(spot) {
+async function fetchSpotForecast(spot) {
   const marineUrl = `${MARINE_API_URL}?${buildQuery({
     latitude: spot.latitude,
     longitude: spot.longitude,
-    hourly: "wave_height,wave_period,wave_direction,sea_surface_temperature",
+    hourly: "wave_height,wave_period,wave_direction,sea_surface_temperature,sea_level_height_msl",
     timezone: TIMEZONE,
     forecast_days: 7,
     cell_selection: "sea"
@@ -655,28 +799,22 @@ async function fetchStaticSpotForecast(spot) {
   const weatherUrl = `${WEATHER_API_URL}?${buildQuery({
     latitude: spot.latitude,
     longitude: spot.longitude,
-    hourly: "wind_speed_10m,wind_direction_10m",
+    hourly: "wind_speed_10m,wind_direction_10m,precipitation",
     wind_speed_unit: "ms",
     timezone: TIMEZONE,
     forecast_days: 7
   })}`;
 
-  const [marineResponse, windResponse] = await Promise.all([
-    fetch(marineUrl),
-    fetch(weatherUrl)
-  ]);
-
-  if (!marineResponse.ok || !windResponse.ok) {
-    throw new Error("Open-Meteo 직접 호출 실패");
-  }
+  const [marineResponse, windResponse] = await Promise.all([fetch(marineUrl), fetch(weatherUrl)]);
+  if (!marineResponse.ok || !windResponse.ok) throw new Error("Open-Meteo 직접 호출 실패");
 
   const marine = await marineResponse.json();
   const wind = await windResponse.json();
   const marineHourly = marine.hourly || {};
   const windHourly = wind.hourly || {};
 
-  const hourly = marineHourly.time.map((time, index) => {
-    const frame = {
+  const hourly = assignTidePhases(
+    marineHourly.time.map((time, index) => ({
       time,
       date: time.slice(0, 10),
       hour: time.slice(11, 16),
@@ -684,33 +822,36 @@ async function fetchStaticSpotForecast(spot) {
       wave_period: at(marineHourly.wave_period, index),
       wave_direction: at(marineHourly.wave_direction, index),
       sea_surface_temperature: at(marineHourly.sea_surface_temperature, index),
+      sea_level_height_msl: at(marineHourly.sea_level_height_msl, index),
       wind_speed_10m: at(windHourly.wind_speed_10m, index),
-      wind_direction_10m: at(windHourly.wind_direction_10m, index)
-    };
-    const breakInfo = classifyWaveBreak(frame.wave_direction, spot.beachFacingAngle);
+      wind_direction_10m: at(windHourly.wind_direction_10m, index),
+      precipitation: at(windHourly.precipitation, index)
+    }))
+  );
 
-    return {
-      ...frame,
-      translated: translateStaticFrame(frame, spot),
-      break_type: breakInfo.break_type,
-      break_comment: breakInfo.break_comment,
-      angle_diff: breakInfo.angle_diff
-    };
+  hourly.forEach((frame) => {
+    frame.translated = translateFrame(frame, spot);
   });
 
   return {
     id: spot.id,
+    region: spot.region,
     name: spot.name,
+    short_name: spot.shortName,
     full_name: spot.fullName,
     note: spot.note,
     latitude: spot.latitude,
     longitude: spot.longitude,
     beach_facing_angle: spot.beachFacingAngle,
+    ideal_swell_from: spot.idealSwellFrom,
+    tide_preference: spot.tidePreference,
+    map_image: spot.mapImage,
     hourly_units: {
       wave_height: "m",
       wave_period: "s",
       wave_direction: "deg",
       sea_surface_temperature: "°C",
+      sea_level_height_msl: "m",
       wind_speed_10m: "m/s",
       wind_direction_10m: "deg"
     },
@@ -719,8 +860,8 @@ async function fetchStaticSpotForecast(spot) {
   };
 }
 
-async function fetchStaticSurfData() {
-  const spots = await Promise.all(STATIC_SPOTS.map((spot) => fetchStaticSpotForecast(spot)));
+async function fetchSurfData() {
+  const spots = await Promise.all(SPOTS.map((spot) => fetchSpotForecast(spot)));
 
   return {
     updated_at: new Date().toISOString(),
@@ -728,37 +869,17 @@ async function fetchStaticSurfData() {
     source: {
       marine: "Open-Meteo Marine API",
       weather: "Open-Meteo Weather Forecast API",
-      mode: "static-browser-fetch"
+      tide_note: "sea_level_height_msl is model-based and coastal accuracy is limited"
     },
     spots
   };
 }
 
-function render() {
-  renderStatus();
-  renderSpotSwitch();
-  renderBestSummary();
-  renderTodayCard();
-  renderCriteriaCard();
-  renderDateStrip();
-  renderHourlyList();
-  renderDetails();
-  renderRawData();
-  elements.refreshButton.disabled = state.loading;
-}
-
-async function loadSurfData({ refresh = false } = {}) {
+async function loadSurfData() {
   setState({ loading: true, error: null });
 
   try {
-    const endpoint = refresh ? "/api/surf-data/refresh" : "/api/surf-data";
-    const response = await fetch(`${API_BASE_URL}${endpoint}`);
-
-    if (!response.ok) {
-      throw new Error(`서버 응답 오류: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await fetchSurfData();
     const currentSpot = data.spots.find((spot) => spot.id === state.currentSpotId) || data.spots[0];
     const selectedDate = state.selectedDate || currentSpot?.daily?.[0]?.date || null;
 
@@ -769,23 +890,10 @@ async function loadSurfData({ refresh = false } = {}) {
       selectedDate
     });
   } catch (error) {
-    try {
-      const data = await fetchStaticSurfData();
-      const currentSpot = data.spots.find((spot) => spot.id === state.currentSpotId) || data.spots[0];
-      const selectedDate = state.selectedDate || currentSpot?.daily?.[0]?.date || null;
-
-      setState({
-        loading: false,
-        data,
-        currentSpotId: currentSpot?.id || state.currentSpotId,
-        selectedDate
-      });
-    } catch (staticError) {
-      setState({
-        loading: false,
-        error: `예보를 불러오지 못했습니다. ${staticError.message || error.message}`
-      });
-    }
+    setState({
+      loading: false,
+      error: `예보를 불러오지 못했습니다. ${error.message}`
+    });
   }
 }
 
@@ -811,7 +919,7 @@ elements.rawToggle.addEventListener("click", () => {
 });
 
 elements.refreshButton.addEventListener("click", () => {
-  loadSurfData({ refresh: true });
+  loadSurfData();
 });
 
 subscribe(render);
