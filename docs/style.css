@@ -377,57 +377,6 @@ h1 {
   padding: 14px;
 }
 
-.jma-card {
-  margin-bottom: 14px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  box-shadow: var(--shadow);
-}
-
-.jma-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.jma-head h2 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.jma-head a {
-  flex: 0 0 auto;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  padding: 7px 9px;
-  color: var(--mint);
-  font-size: 12px;
-  font-weight: 900;
-  text-decoration: none;
-}
-
-.jma-card p {
-  margin: 0 0 10px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.jma-card img {
-  display: block;
-  width: 100%;
-  max-height: 360px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #000;
-  object-fit: cover;
-  object-position: center;
-}
-
 .criteria-head {
   display: grid;
   grid-template-columns: 1fr;

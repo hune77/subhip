@@ -94,7 +94,6 @@ const elements = {
   bestSummary: document.querySelector("#bestSummary"),
   todayCard: document.querySelector("#todayCard"),
   criteriaCard: document.querySelector("#criteriaCard"),
-  jmaCard: document.querySelector("#jmaCard"),
   dateStrip: document.querySelector("#dateStrip"),
   selectedDateLabel: document.querySelector("#selectedDateLabel"),
   hourlyList: document.querySelector("#hourlyList"),
@@ -165,7 +164,7 @@ function getCurrentSpot() {
 function getSelectedHours() {
   const spot = getCurrentSpot();
   if (!spot || !state.selectedDate) return [];
-  return spot.hourly.filter((item) => item.date === state.selectedDate);
+  return spot.hourly.filter((item) => item.date === state.selectedDate && isSurfableHour(item.hour));
 }
 
 function getBestHourForSelectedDate() {
@@ -178,10 +177,19 @@ function getBestHourForSelectedDate() {
 function getOverallBestHour() {
   const spot = getCurrentSpot();
   if (!spot) return null;
-  return spot.hourly.reduce((best, item) => {
+  return spot.hourly.filter((item) => isSurfableHour(item.hour)).reduce((best, item) => {
     if (!best || item.translated.score > best.translated.score) return item;
     return best;
   }, null);
+}
+
+function isSurfableHour(hourText) {
+  const hour = Number(String(hourText).slice(0, 2));
+  return hour >= 5 && hour <= 19;
+}
+
+function getDefaultSelectedDate(spot) {
+  return spot?.daily?.find((day) => day.best_score !== null)?.date || spot?.daily?.[0]?.date || null;
 }
 
 function classifyWind(windDirection, beachFacingAngle) {
@@ -592,8 +600,13 @@ function renderTodayCard() {
   const spot = getCurrentSpot();
   const best = getBestHourForSelectedDate();
 
-  if (state.loading || !spot || !best) {
+  if (state.loading || !spot) {
     elements.todayCard.innerHTML = `<div class="hero-content"><p>예보 데이터를 준비하고 있습니다.</p></div>`;
+    return;
+  }
+
+  if (!best) {
+    elements.todayCard.innerHTML = `<div class="hero-content"><p>선택한 날짜에는 05:00~19:00 기준 추천 가능한 데이터가 없습니다.</p></div>`;
     return;
   }
 
@@ -668,22 +681,6 @@ function renderCriteriaCard() {
   `;
 }
 
-function renderJmaCard() {
-  if (!elements.jmaCard) return;
-
-  elements.jmaCard.innerHTML = `
-    <div class="jma-head">
-      <div>
-        <p class="section-kicker">JMA WAVE MAP</p>
-        <h2>일본 파고 참고</h2>
-      </div>
-      <a href="https://gga.kr/pds/w_.php" target="_blank" rel="noreferrer">원본 보기</a>
-    </div>
-    <p>IMOC/JMA 파고 지도는 부산 앞바다 색상 흐름을 수동 참고합니다. 현재 점수는 Open-Meteo + 로컬 보정 기준이고, 지도 자동 판독은 다음 단계입니다.</p>
-    <img src="https://www.imocwx.com/cwm/cwmsjp_00.png" alt="일본 기상청 파고 지도">
-  `;
-}
-
 function renderDateStrip() {
   const spot = getCurrentSpot();
   if (!spot) {
@@ -692,12 +689,15 @@ function renderDateStrip() {
   }
 
   elements.dateStrip.innerHTML = spot.daily
-    .map((day) => `
-      <button class="date-button ${day.date === state.selectedDate ? "is-active" : ""}" type="button" data-date="${day.date}">
-        <strong>${formatDay(day.date)}</strong>
-        <span>${day.rating} · ${day.best_score}</span>
-      </button>
-    `)
+    .map((day) => {
+      const score = day.best_score ?? "-";
+      return `
+        <button class="date-button ${day.date === state.selectedDate ? "is-active" : ""}" type="button" data-date="${day.date}">
+          <strong>${formatDay(day.date)}</strong>
+          <span>${day.rating} · ${score}</span>
+        </button>
+      `;
+    })
     .join("");
 }
 
@@ -810,7 +810,6 @@ function render() {
   renderBestSummary();
   renderTodayCard();
   renderCriteriaCard();
-  renderJmaCard();
   renderDateStrip();
   renderHourlyList();
   renderDetails();
@@ -857,11 +856,14 @@ function buildDailySummaries(hourly) {
   }, {});
 
   return Object.entries(grouped).map(([date, items]) => {
-    const bestHour = items.reduce((best, item) => {
+    const scoringItems = items.filter((item) => isSurfableHour(item.hour));
+    const bestHour = scoringItems.reduce((best, item) => {
       if (!best || item.translated.score > best.translated.score) return item;
       return best;
     }, null);
-    const avgScore = Math.round(items.reduce((sum, item) => sum + item.translated.score, 0) / items.length);
+    const avgScore = scoringItems.length
+      ? Math.round(scoringItems.reduce((sum, item) => sum + item.translated.score, 0) / scoringItems.length)
+      : null;
 
     return {
       date,
@@ -869,7 +871,7 @@ function buildDailySummaries(hourly) {
       rating: bestHour?.translated.rating || "정보 없음",
       avg_score: avgScore,
       best_score: bestHour?.translated.score || null,
-      summary: bestHour ? `${bestHour.hour} 전후가 가장 무난합니다. ${bestHour.translated.summary}` : "예보 데이터가 없습니다."
+      summary: bestHour ? `${bestHour.hour} 전후가 가장 무난합니다. ${bestHour.translated.summary}` : "05:00~19:00 추천 데이터가 없습니다."
     };
   });
 }
@@ -968,7 +970,7 @@ async function loadSurfData() {
   try {
     const data = await fetchSurfData();
     const currentSpot = data.spots.find((spot) => spot.id === state.currentSpotId) || data.spots[0];
-    const selectedDate = state.selectedDate || currentSpot?.daily?.[0]?.date || null;
+    const selectedDate = state.selectedDate || getDefaultSelectedDate(currentSpot);
 
     setState({
       loading: false,
@@ -991,7 +993,7 @@ elements.spotSwitch.addEventListener("click", (event) => {
   const spot = state.data.spots.find((item) => item.id === button.dataset.spotId);
   setState({
     currentSpotId: button.dataset.spotId,
-    selectedDate: spot?.daily?.[0]?.date || null
+    selectedDate: getDefaultSelectedDate(spot)
   });
 });
 
