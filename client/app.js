@@ -540,6 +540,50 @@ function calculateSongjeongSurfScore(frame) {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
+function calculateDadaepoSurfScore(frame, spot, wind, swell, tide) {
+  const waveHeight = scoreWaveHeight(frame);
+  let score = 28;
+
+  if (waveHeight >= 0.7 && waveHeight < 0.9) score += 8;
+  else if (waveHeight >= 0.9 && waveHeight < 1.3) score += 20;
+  else if (waveHeight >= 1.3 && waveHeight < 1.8) score += 24;
+  else if (waveHeight >= 1.8 && waveHeight < 2.2) score += 14;
+  else if (waveHeight >= 2.2) score += 6;
+
+  if (swell.dadaeppong && !swell.weakDadaeppong) score += 22;
+  else if (swell.weakDadaeppong) score += 12;
+  else score -= 16;
+
+  if (frame.wave_period >= 7 && frame.wave_period <= 10) score += 14;
+  else if (frame.wave_period >= 6) score += 8;
+  else score -= 8;
+
+  if (frame.wind_speed_10m <= 4) score += 12;
+  else if (frame.wind_speed_10m <= 6) score += 8;
+  else if (frame.wind_speed_10m <= 8) score += 2;
+  else score -= 12;
+
+  if (wind.wind_type === "오프쇼어") score += frame.wind_speed_10m <= 7 ? 8 : 3;
+  if (wind.wind_type === "온쇼어") score -= frame.wind_speed_10m >= 6 ? 20 : 10;
+  if (tide.passed) score += 8;
+  if (frame.precipitation >= 1) score -= 6;
+  if (frame.precipitation >= 5) score -= 20;
+
+  if (waveHeight < 0.9) score = Math.min(score, 62);
+  if (!swell.dadaeppong && !swell.weakDadaeppong) score = Math.min(score, 58);
+  if (swell.weakDadaeppong) score = Math.min(score, waveHeight >= 0.9 ? 76 : 70);
+  if (waveHeight >= 1.8) score = Math.min(score, 84);
+  if (waveHeight >= 2.2) score = Math.min(score, 78);
+  if (frame.jma_wave?.available && frame.wave_height < 1.0 && waveHeight >= 1.6) score = Math.min(score, 78);
+  if (wind.wind_type === "온쇼어" && frame.wind_speed_10m >= 6) score = Math.min(score, 58);
+  if (frame.wind_speed_10m >= 8) score = Math.min(score, 70);
+  if (frame.wind_speed_10m >= 10) score = Math.min(score, 45);
+  if (frame.precipitation >= 5) score = Math.min(score, 55);
+  if (spot.id === "dadaepo-songan") score = Math.min(score, 80);
+
+  return Math.max(0, Math.min(92, Math.round(score)));
+}
+
 function scoreHour(frame, spot) {
   const wind = classifyWind(frame.wind_direction_10m, spot.beachFacingAngle);
   const swell = classifySwell(frame, spot);
@@ -549,6 +593,8 @@ function scoreHour(frame, spot) {
 
   if (spot.region === "songjeong") {
     score = calculateSongjeongSurfScore(frame);
+  } else if (spot.region === "dadaepo") {
+    return calculateDadaepoSurfScore(frame, spot, wind, swell, tide);
   } else {
     if (waveHeight >= 0.75) score += 10;
     if (waveHeight >= 0.9) score += 18;
