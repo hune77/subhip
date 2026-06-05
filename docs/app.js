@@ -542,6 +542,8 @@ function calculateSongjeongSurfScore(frame) {
 
 function calculateDadaepoSurfScore(frame, spot, wind, swell, tide) {
   const waveHeight = scoreWaveHeight(frame);
+  const windSpeed = typeof frame.wind_speed_10m === "number" ? frame.wind_speed_10m : null;
+  const rain = typeof frame.precipitation === "number" ? frame.precipitation : null;
   let score = 28;
 
   if (waveHeight >= 0.7 && waveHeight < 0.9) score += 8;
@@ -558,27 +560,40 @@ function calculateDadaepoSurfScore(frame, spot, wind, swell, tide) {
   else if (frame.wave_period >= 6) score += 8;
   else score -= 8;
 
-  if (frame.wind_speed_10m <= 4) score += 12;
-  else if (frame.wind_speed_10m <= 6) score += 8;
-  else if (frame.wind_speed_10m <= 8) score += 2;
+  if (windSpeed === null) score -= 4;
+  else if (windSpeed <= 4) score += 12;
+  else if (windSpeed <= 6) score += 8;
+  else if (windSpeed <= 8) score += 2;
   else score -= 12;
 
-  if (wind.wind_type === "오프쇼어") score += frame.wind_speed_10m <= 7 ? 8 : 3;
-  if (wind.wind_type === "온쇼어") score -= frame.wind_speed_10m >= 6 ? 20 : 10;
+  if (windSpeed !== null && wind.wind_type === "오프쇼어") score += windSpeed <= 7 ? 8 : 3;
+  if (windSpeed !== null && wind.wind_type === "온쇼어") score -= windSpeed >= 6 ? 20 : 10;
   if (tide.passed) score += 8;
-  if (frame.precipitation >= 1) score -= 6;
-  if (frame.precipitation >= 5) score -= 20;
+  if (rain !== null && rain >= 1) score -= 6;
+  if (rain !== null && rain >= 5) score -= 20;
 
   if (waveHeight < 0.9) score = Math.min(score, 62);
   if (!swell.dadaeppong && !swell.weakDadaeppong) score = Math.min(score, 58);
   if (swell.weakDadaeppong) score = Math.min(score, waveHeight >= 0.9 ? 76 : 70);
+  if (
+    swell.weakDadaeppong &&
+    waveHeight >= 0.9 &&
+    waveHeight <= 1.1 &&
+    (wind.wind_type === "오프쇼어" || wind.wind_type === "사이드 바람") &&
+    windSpeed !== null &&
+    windSpeed <= 8 &&
+    tide.passed &&
+    (rain === null || rain < 0.5)
+  ) {
+    score = Math.max(score, 70);
+  }
   if (waveHeight >= 1.8) score = Math.min(score, 84);
   if (waveHeight >= 2.2) score = Math.min(score, 78);
   if (frame.jma_wave?.available && frame.wave_height < 1.0 && waveHeight >= 1.6) score = Math.min(score, 78);
   if (wind.wind_type === "온쇼어" && frame.wind_speed_10m >= 6) score = Math.min(score, 58);
-  if (frame.wind_speed_10m >= 8) score = Math.min(score, 70);
-  if (frame.wind_speed_10m >= 10) score = Math.min(score, 45);
-  if (frame.precipitation >= 5) score = Math.min(score, 55);
+  if (windSpeed !== null && windSpeed >= 8) score = Math.min(score, 70);
+  if (windSpeed !== null && windSpeed >= 10) score = Math.min(score, 45);
+  if (rain !== null && rain >= 5) score = Math.min(score, 55);
   if (spot.id === "dadaepo-songan") score = Math.min(score, 80);
 
   return Math.max(0, Math.min(92, Math.round(score)));
