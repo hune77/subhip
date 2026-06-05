@@ -437,21 +437,15 @@ h1 {
 }
 
 .date-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: 8px;
-  margin: 0 -14px 18px;
-  padding: 0 14px 2px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.date-strip::-webkit-scrollbar {
-  display: none;
+  margin: 0 0 18px;
 }
 
 .date-button {
-  flex: 0 0 auto;
-  min-width: 82px;
+  min-width: 0;
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px 9px;
