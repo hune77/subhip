@@ -344,7 +344,7 @@ h1 {
 
 .metric-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-top: 16px;
 }
@@ -753,5 +753,11 @@ pre {
 
   .metric strong {
     font-size: 16px;
+  }
+}
+
+@media (max-width: 520px) {
+  .metric-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

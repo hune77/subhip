@@ -173,8 +173,10 @@ GET /api/surf-data/refresh
 일본 파고 지도:
 
 - `https://gga.kr/pds/w_.php`의 IMOC/JMA 파고 지도는 외부 파고 보정 소스로 참고합니다.
-- 현재 화면에는 일본 파고 이미지를 띄우지 않습니다.
-- 지도 색상을 자동 판독해 다대포/송정 위치의 파고값을 점수에 합산하는 기능은 다음 단계입니다.
+- 화면에는 일본 파고 이미지를 띄우지 않고, 스크립트가 부산 연안 근처 픽셀 색상을 읽어 `client/data/jma-wave.json`, `docs/data/jma-wave.json`으로 데이터화합니다.
+- JMA/IMOC 지도는 현재 약 3일치만 제공됩니다. 앱은 이 범위 안에서는 `JMA 보정`, 4일째부터는 `Open-Meteo 단독`으로 표시합니다.
+- 하루가 지나면 JMA/IMOC 페이지도 새 3일 구간으로 밀려나므로, GitHub Actions 또는 로컬 `npm run update:jma` 실행으로 다시 앞 3일의 보정 정확도가 갱신됩니다.
+- JMA 값은 지도 색상 밴드 기반의 근사치이므로, Open-Meteo 파고를 완전히 대체하지 않고 `Open-Meteo 60% + JMA 40%` 비율로 합산합니다.
 
 시간대 필터:
 

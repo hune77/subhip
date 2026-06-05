@@ -1,6 +1,9 @@
 const MARINE_API_URL = "https://marine-api.open-meteo.com/v1/marine";
 const WEATHER_API_URL = "https://api.open-meteo.com/v1/forecast";
+const JMA_WAVE_DATA_URL = "./data/jma-wave.json";
 const TIMEZONE = "Asia/Seoul";
+const JMA_BLEND_WEIGHT = 0.4;
+const JMA_MATCH_WINDOW_MS = 3 * 60 * 60 * 1000;
 
 const SPOTS = [
   {
@@ -120,6 +123,14 @@ function at(list, index) {
   return Array.isArray(list) ? list[index] : null;
 }
 
+function roundWaveHeight(value) {
+  return typeof value === "number" ? Math.round(value * 100) / 100 : null;
+}
+
+function spotJmaKey(spot) {
+  return spot.region === "dadaepo" ? "dadaepo" : "songjeong";
+}
+
 function formatDay(dateString) {
   return new Intl.DateTimeFormat("ko-KR", {
     weekday: "short",
@@ -192,6 +203,70 @@ function getDefaultSelectedDate(spot) {
   return spot?.daily?.find((day) => day.best_score !== null)?.date || spot?.daily?.[0]?.date || null;
 }
 
+function scoreWaveHeight(frame) {
+  return frame.combined_wave_height ?? frame.wave_height;
+}
+
+function combineWaveHeights(openMeteoHeight, jmaHeight) {
+  if (typeof openMeteoHeight !== "number") return roundWaveHeight(jmaHeight);
+  if (typeof jmaHeight !== "number") return roundWaveHeight(openMeteoHeight);
+  return roundWaveHeight(openMeteoHeight * (1 - JMA_BLEND_WEIGHT) + jmaHeight * JMA_BLEND_WEIGHT);
+}
+
+function findNearestJmaFrame(jmaData, timeText, spot) {
+  const frames = jmaData?.forecastHours || [];
+  if (!frames.length) return null;
+
+  const targetTime = new Date(`${timeText}+09:00`).getTime();
+  const key = spotJmaKey(spot);
+  let best = null;
+
+  for (const frame of frames) {
+    const spotData = frame.spots?.[key];
+    if (!spotData?.available) continue;
+
+    const diff = Math.abs(new Date(frame.time).getTime() - targetTime);
+    if (diff > JMA_MATCH_WINDOW_MS) continue;
+    if (!best || diff < best.diff) best = { frame, spotData, diff };
+  }
+
+  return best;
+}
+
+function applyJmaWaveData(hourly, spot, jmaData) {
+  return hourly.map((frame) => {
+    const match = findNearestJmaFrame(jmaData, frame.time, spot);
+
+    if (!match) {
+      frame.jma_wave = {
+        available: false,
+        source_label: "Open-Meteo 단독",
+        reason: "JMA/IMOC 3일 예보 범위 밖이거나 매칭되는 이미지가 없습니다."
+      };
+      frame.combined_wave_height = roundWaveHeight(frame.wave_height);
+      return frame;
+    }
+
+    frame.jma_wave = {
+      available: true,
+      source_label: "JMA 보정",
+      time: match.frame.time,
+      height_m: match.spotData.heightM,
+      band: match.spotData.band,
+      image_url: match.frame.imageUrl
+    };
+    frame.combined_wave_height = combineWaveHeights(frame.wave_height, match.spotData.heightM);
+    return frame;
+  });
+}
+
+function waveSourceText(item) {
+  if (item?.jma_wave?.available) {
+    return `JMA ${item.jma_wave.band} 보정`;
+  }
+  return "Open-Meteo 단독";
+}
+
 function classifyWind(windDirection, beachFacingAngle) {
   if (windDirection === null || windDirection === undefined) {
     return {
@@ -224,6 +299,8 @@ function classifyWind(windDirection, beachFacingAngle) {
 }
 
 function classifySwell(frame, spot) {
+  const waveHeight = scoreWaveHeight(frame);
+
   if (spot.region === "dadaepo") {
     const southDiff = angularDistance(frame.wave_direction, 180);
     const seDiff = angularDistance(frame.wave_direction, 115);
@@ -239,7 +316,7 @@ function classifySwell(frame, spot) {
       };
     }
 
-    if (seDiff <= 50 && frame.wave_height >= 0.75) {
+    if (seDiff <= 50 && waveHeight >= 0.75) {
       return {
         type: "약다대뽕 스웰",
         passed: true,
@@ -250,7 +327,7 @@ function classifySwell(frame, spot) {
       };
     }
 
-    if (seDiff <= 70 && frame.wave_height >= 0.9) {
+    if (seDiff <= 70 && waveHeight >= 0.9) {
       return {
         type: "애매한 다대포 스웰",
         passed: true,
@@ -285,7 +362,7 @@ function classifySwell(frame, spot) {
   if (diff <= 90) {
     return {
       type: "비스듬한 스웰",
-      passed: frame.wave_height >= 0.8,
+      passed: waveHeight >= 0.8,
       diff,
       comment: "방향은 살짝 비껴갑니다. 사이즈가 받쳐주면 탈 수 있습니다."
     };
@@ -376,29 +453,30 @@ function scoreHour(frame, spot) {
   const wind = classifyWind(frame.wind_direction_10m, spot.beachFacingAngle);
   const swell = classifySwell(frame, spot);
   const tide = classifyTide(frame, spot);
+  const waveHeight = scoreWaveHeight(frame);
   let score = 42;
 
   if (spot.region === "songjeong") {
-    if (frame.wave_height >= 0.5) score += 16;
-    if (frame.wave_height >= 0.8) score += 18;
-    if (frame.wave_height >= 1.5) score -= 18;
+    if (waveHeight >= 0.5) score += 16;
+    if (waveHeight >= 0.8) score += 18;
+    if (waveHeight >= 1.5) score -= 18;
     if (swell.type === "정스웰") score += 24;
     else if (swell.type === "비스듬한 스웰") score += 8;
     else score -= 18;
     if (frame.wave_period >= 6 && frame.wave_period < 9) score += 8;
     if (frame.wave_period >= 9) score -= 8;
   } else {
-    if (frame.wave_height >= 0.75) score += 10;
-    if (frame.wave_height >= 0.9) score += 18;
-    if (frame.wave_height >= 1.0) score += 16;
-    if (frame.wave_height >= 1.8) score -= 8;
+    if (waveHeight >= 0.75) score += 10;
+    if (waveHeight >= 0.9) score += 18;
+    if (waveHeight >= 1.0) score += 16;
+    if (waveHeight >= 1.8) score -= 8;
     if (swell.type === "남스웰") score += 24;
     else if (swell.type === "약다대뽕 스웰") score += 18;
     else if (swell.type === "애매한 다대포 스웰") score += 10;
     else score -= 16;
     if (frame.wave_period >= 7) score += 14;
     else if (frame.wave_period >= 6) score += 5;
-    else if (swell.weakDadaeppong && frame.wave_height >= 0.8) score -= 2;
+    else if (swell.weakDadaeppong && waveHeight >= 0.8) score -= 2;
     else score -= 10;
   }
 
@@ -413,8 +491,8 @@ function scoreHour(frame, spot) {
   const weakDadaeppongWindow =
     spot.region === "dadaepo" &&
     swell.weakDadaeppong &&
-    frame.wave_height >= 0.78 &&
-    frame.wave_height <= 1.1 &&
+    waveHeight >= 0.78 &&
+    waveHeight <= 1.1 &&
     (wind.wind_type === "오프쇼어" || wind.wind_type === "사이드 바람") &&
     frame.wind_speed_10m <= 8 &&
     tide.passed &&
@@ -422,11 +500,11 @@ function scoreHour(frame, spot) {
 
   if (weakDadaeppongWindow) {
     score = Math.max(score, 68);
-    if (frame.wave_height >= 0.9) score = Math.max(score, 72);
+    if (waveHeight >= 0.9) score = Math.max(score, 72);
   }
 
-  if (frame.wave_height < 0.5 && spot.region === "songjeong") score = Math.min(score, 58);
-  if (frame.wave_height < 0.9 && spot.region === "dadaepo") score = Math.min(score, 62);
+  if (waveHeight < 0.5 && spot.region === "songjeong") score = Math.min(score, 58);
+  if (waveHeight < 0.9 && spot.region === "dadaepo") score = Math.min(score, 62);
   if (weakDadaeppongWindow) score = Math.max(score, 68);
   if (wind.wind_type === "온쇼어" && frame.wind_speed_10m >= 6) score = Math.min(score, 58);
   if (frame.wind_speed_10m >= 10) score = Math.min(score, 45);
@@ -448,12 +526,14 @@ function translateFrame(frame, spot) {
   const tide = classifyTide(frame, spot);
   const score = scoreHour(frame, spot);
   const rating = ratingFromScore(score);
+  const waveHeight = scoreWaveHeight(frame);
+  const sourceSuffix = frame.jma_wave?.available ? " · JMA 보정" : " · Open-Meteo 단독";
 
   return {
     score,
     rating,
     signal: signalColor(score),
-    wave_height_text: translateWaveHeight(frame.wave_height, spot),
+    wave_height_text: translateWaveHeight(waveHeight, spot),
     wave_period_text: translateWavePeriod(frame.wave_period, spot),
     water_temperature_text: frame.sea_surface_temperature === null ? "수온 데이터가 아직 없습니다." : "수온 기준 웻슈트 선택을 참고하세요.",
     suit_recommendation: getSuitRecommendation(frame.sea_surface_temperature),
@@ -463,7 +543,7 @@ function translateFrame(frame, spot) {
     swell_comment: swell.comment,
     tide_type: tide.type,
     tide_comment: tide.comment,
-    summary: `${rating}: 파고 ${frame.wave_height ?? "-"}m, 주기 ${frame.wave_period ?? "-"}초, ${swell.type}, 바람 ${wind.wind_type}`
+    summary: `${rating}: 파고 ${waveHeight ?? "-"}m, 주기 ${frame.wave_period ?? "-"}초, ${swell.type}, 바람 ${wind.wind_type}${sourceSuffix}`
   };
 }
 
@@ -477,13 +557,14 @@ function conditionChecks(item) {
   const spot = getCurrentSpot();
   const swell = classifySwell(item, spot);
   const tide = classifyTide(item, spot);
-  const wavePass = spot.region === "songjeong" ? item.wave_height >= 0.5 : item.wave_height >= 1.0;
+  const waveHeight = scoreWaveHeight(item);
+  const wavePass = spot.region === "songjeong" ? waveHeight >= 0.5 : waveHeight >= 1.0;
   const periodPass = spot.region === "songjeong" ? item.wave_period >= 6 && item.wave_period < 9 : item.wave_period >= 6.5;
   const windPass = item.wind_speed_10m <= 5 || (item.translated.wind_type === "오프쇼어" && item.wind_speed_10m <= 7);
   const rainPass = spot.region !== "dadaepo" || !item.precipitation || item.precipitation < 1;
 
   const checks = [
-    { key: "wave", label: "파고", passed: wavePass, value: `${item.wave_height ?? "-"}m` },
+    { key: "wave", label: "파고", passed: wavePass, value: `${waveHeight ?? "-"}m` },
     { key: "swell", label: "스웰", passed: swell.passed, value: swell.type },
     { key: "wind", label: "바람", passed: windPass, value: `${item.translated.wind_type} ${item.wind_speed_10m ?? "-"}m/s` },
     { key: "period", label: "주기", passed: periodPass, value: `${item.wave_period ?? "-"}s` },
@@ -549,7 +630,7 @@ function renderStatus() {
   elements.statusArea.innerHTML = `
     <div class="notice">
       <i class="ph ph-pulse"></i>
-      <span>LIVE ${updatedAt} · 한국 스팟 기준 컨디션 스코어 · 조위는 Open-Meteo 참고값</span>
+      <span>LIVE ${updatedAt} · 앞 3일은 JMA/IMOC 파고 색상 보정 · 4일째부터는 Open-Meteo 단독</span>
     </div>
   `;
 }
@@ -586,7 +667,7 @@ function renderBestSummary() {
       <div>
         <p class="section-kicker">OVERALL BEST</p>
         <h2>${formatBestWindow(overallBest)}</h2>
-        <p>${overallBest.translated.rating}, 파고 ${overallBest.wave_height}m, 주기 ${overallBest.wave_period}s, ${overallBest.translated.swell_type}, 바람 ${overallBest.translated.wind_type}</p>
+        <p>${overallBest.translated.rating}, 파고 ${scoreWaveHeight(overallBest)}m, 주기 ${overallBest.wave_period}s, ${overallBest.translated.swell_type}, 바람 ${overallBest.translated.wind_type} · ${waveSourceText(overallBest)}</p>
       </div>
       <div class="summary-score ${ratingClass(overallBest.translated.rating)}">
         <span>SCORE</span>
@@ -637,8 +718,9 @@ function renderTodayCard() {
       <p class="hero-copy">${best.translated.wave_height_text}</p>
       <p class="hero-signal"><span>SUBHIP SIGNAL</span>${buildVerdict(best)}</p>
       <div class="metric-row">
-        <div class="metric"><span>WAVE</span><strong>${best.wave_height ?? "-"}m</strong></div>
+        <div class="metric"><span>WAVE</span><strong>${scoreWaveHeight(best) ?? "-"}m</strong></div>
         <div class="metric"><span>SWELL</span><strong>${best.translated.swell_type}</strong></div>
+        <div class="metric"><span>SOURCE</span><strong>${waveSourceText(best)}</strong></div>
         <div class="metric"><span>TIDE</span><strong>${best.translated.tide_type}</strong></div>
       </div>
     </div>
@@ -694,7 +776,7 @@ function renderDateStrip() {
       return `
         <button class="date-button ${day.date === state.selectedDate ? "is-active" : ""}" type="button" data-date="${day.date}">
           <strong>${formatDay(day.date)}</strong>
-          <span>${day.rating} · ${score}</span>
+          <span>${day.rating} · ${score} · ${day.source_label}</span>
         </button>
       `;
     })
@@ -871,12 +953,23 @@ function buildDailySummaries(hourly) {
       rating: bestHour?.translated.rating || "정보 없음",
       avg_score: avgScore,
       best_score: bestHour?.translated.score || null,
+      source_label: bestHour ? waveSourceText(bestHour) : "Open-Meteo 단독",
       summary: bestHour ? `${bestHour.hour} 전후가 가장 무난합니다. ${bestHour.translated.summary}` : "05:00~19:00 추천 데이터가 없습니다."
     };
   });
 }
 
-async function fetchSpotForecast(spot) {
+async function fetchJmaWaveData() {
+  try {
+    const response = await fetch(`${JMA_WAVE_DATA_URL}?v=${Date.now()}`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+async function fetchSpotForecast(spot, jmaData) {
   const marineUrl = `${MARINE_API_URL}?${buildQuery({
     latitude: spot.latitude,
     longitude: spot.longitude,
@@ -902,7 +995,7 @@ async function fetchSpotForecast(spot) {
   const marineHourly = marine.hourly || {};
   const windHourly = wind.hourly || {};
 
-  const hourly = assignTidePhases(
+  const hourly = applyJmaWaveData(assignTidePhases(
     marineHourly.time.map((time, index) => ({
       time,
       date: time.slice(0, 10),
@@ -916,7 +1009,7 @@ async function fetchSpotForecast(spot) {
       wind_direction_10m: at(windHourly.wind_direction_10m, index),
       precipitation: at(windHourly.precipitation, index)
     }))
-  );
+  ), spot, jmaData);
 
   hourly.forEach((frame) => {
     frame.translated = translateFrame(frame, spot);
@@ -950,7 +1043,8 @@ async function fetchSpotForecast(spot) {
 }
 
 async function fetchSurfData() {
-  const spots = await Promise.all(SPOTS.map((spot) => fetchSpotForecast(spot)));
+  const jmaData = await fetchJmaWaveData();
+  const spots = await Promise.all(SPOTS.map((spot) => fetchSpotForecast(spot, jmaData)));
 
   return {
     updated_at: new Date().toISOString(),
@@ -958,6 +1052,7 @@ async function fetchSurfData() {
     source: {
       marine: "Open-Meteo Marine API",
       weather: "Open-Meteo Weather Forecast API",
+      jma_wave: jmaData ? "IMOC/JMA wave map color-sampled correction for about 3 days" : "JMA correction unavailable",
       tide_note: "sea_level_height_msl is model-based and coastal accuracy is limited"
     },
     spots

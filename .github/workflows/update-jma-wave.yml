@@ -1,0 +1,35 @@
+name: Update JMA wave data
+
+on:
+  schedule:
+    - cron: "20 0,6,12,18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-jma-wave:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate JMA wave JSON
+        run: npm run update:jma
+
+      - name: Commit updated JMA data
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update JMA wave data"
+          file_pattern: "client/data/jma-wave.json docs/data/jma-wave.json"
