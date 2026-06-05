@@ -25,6 +25,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   background:
     linear-gradient(180deg, rgba(101, 255, 210, 0.06), transparent 260px),
     var(--bg);
@@ -438,9 +439,11 @@ h1 {
 
 .date-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin: 0 0 18px;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .date-button {
@@ -457,6 +460,9 @@ h1 {
 .date-button strong,
 .date-button span {
   display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .date-button strong {
@@ -467,7 +473,8 @@ h1 {
 .date-button span {
   margin-top: 5px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .date-button.is-active {

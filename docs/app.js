@@ -293,6 +293,12 @@ function waveSourceText(item) {
   return "Open-Meteo 단독";
 }
 
+function compactWaveSourceText(label) {
+  if (!label) return "OM";
+  if (label.startsWith("JMA")) return "JMA";
+  return "OM";
+}
+
 function classifyWind(windDirection, beachFacingAngle) {
   if (windDirection === null || windDirection === undefined) {
     return {
@@ -886,7 +892,7 @@ function renderCriteriaCard() {
   const criteriaText =
     spot.region === "songjeong"
       ? "송정: S~SE 스웰 최우선, E 스웰은 사이즈가 있을 때만. 8초 이상 주기와 W/NW 오프쇼어를 가산하고, NE 스웰과 S/SW 온쇼어는 감점."
-      : "다대포: 남스웰 + 1.0m 전후 이상 + 6m/s 이하 바람 + 포인트별 타이드 선호를 우선.";
+      : "다대포: 남스웰 + 1.0m 전후 이상 + 주기 6.5~9초 + 6m/s 이하 바람 + 포인트별 타이드 선호를 우선.";
 
   elements.criteriaCard.innerHTML = `
     <div class="criteria-head">
@@ -923,7 +929,7 @@ function renderDateStrip() {
       return `
         <button class="date-button ${day.date === state.selectedDate ? "is-active" : ""}" type="button" data-date="${day.date}">
           <strong>${formatDay(day.date)}</strong>
-          <span>${day.rating} · ${score} · ${day.source_label}</span>
+          <span>${day.rating} · ${score} · ${compactWaveSourceText(day.source_label)}</span>
         </button>
       `;
     })
