@@ -94,6 +94,7 @@ const elements = {
   bestSummary: document.querySelector("#bestSummary"),
   todayCard: document.querySelector("#todayCard"),
   criteriaCard: document.querySelector("#criteriaCard"),
+  jmaCard: document.querySelector("#jmaCard"),
   dateStrip: document.querySelector("#dateStrip"),
   selectedDateLabel: document.querySelector("#selectedDateLabel"),
   hourlyList: document.querySelector("#hourlyList"),
@@ -215,6 +216,53 @@ function classifyWind(windDirection, beachFacingAngle) {
 }
 
 function classifySwell(frame, spot) {
+  if (spot.region === "dadaepo") {
+    const southDiff = angularDistance(frame.wave_direction, 180);
+    const seDiff = angularDistance(frame.wave_direction, 115);
+
+    if (southDiff <= 55) {
+      return {
+        type: "남스웰",
+        passed: true,
+        diff: southDiff,
+        dadaeppong: true,
+        weakDadaeppong: false,
+        comment: "다대포가 가장 잘 받는 남스웰 계열입니다."
+      };
+    }
+
+    if (seDiff <= 50 && frame.wave_height >= 0.75) {
+      return {
+        type: "약다대뽕 스웰",
+        passed: true,
+        diff: seDiff,
+        dadaeppong: true,
+        weakDadaeppong: true,
+        comment: "6월 2일 실제 체감처럼, 남스웰은 아니지만 다대포에서 약하게 살아날 수 있는 남동~동남 계열입니다."
+      };
+    }
+
+    if (seDiff <= 70 && frame.wave_height >= 0.9) {
+      return {
+        type: "애매한 다대포 스웰",
+        passed: true,
+        diff: seDiff,
+        dadaeppong: false,
+        weakDadaeppong: true,
+        comment: "방향은 완벽하지 않지만 사이즈가 받쳐주면 다대포에서 반응할 수 있습니다."
+      };
+    }
+
+    return {
+      type: "역스웰",
+      passed: false,
+      diff: Math.min(southDiff, seDiff),
+      dadaeppong: false,
+      weakDadaeppong: false,
+      comment: "다대포 기준으로는 체감 파도가 약하게 들어올 가능성이 큽니다."
+    };
+  }
+
   const diff = angularDistance(frame.wave_direction, spot.idealSwellFrom);
 
   if (diff <= 45) {
@@ -332,14 +380,17 @@ function scoreHour(frame, spot) {
     if (frame.wave_period >= 6 && frame.wave_period < 9) score += 8;
     if (frame.wave_period >= 9) score -= 8;
   } else {
+    if (frame.wave_height >= 0.75) score += 10;
     if (frame.wave_height >= 0.9) score += 18;
     if (frame.wave_height >= 1.0) score += 16;
     if (frame.wave_height >= 1.8) score -= 8;
-    if (swell.type === "정스웰") score += 22;
-    else if (swell.type === "비스듬한 스웰") score += 6;
+    if (swell.type === "남스웰") score += 24;
+    else if (swell.type === "약다대뽕 스웰") score += 18;
+    else if (swell.type === "애매한 다대포 스웰") score += 10;
     else score -= 16;
     if (frame.wave_period >= 7) score += 14;
     else if (frame.wave_period >= 6) score += 5;
+    else if (swell.weakDadaeppong && frame.wave_height >= 0.8) score -= 2;
     else score -= 10;
   }
 
@@ -351,8 +402,24 @@ function scoreHour(frame, spot) {
   if (spot.region === "dadaepo" && frame.precipitation >= 1) score -= 6;
   if (spot.region === "dadaepo" && frame.precipitation >= 5) score -= 20;
 
+  const weakDadaeppongWindow =
+    spot.region === "dadaepo" &&
+    swell.weakDadaeppong &&
+    frame.wave_height >= 0.78 &&
+    frame.wave_height <= 1.1 &&
+    (wind.wind_type === "오프쇼어" || wind.wind_type === "사이드 바람") &&
+    frame.wind_speed_10m <= 8 &&
+    tide.passed &&
+    (!frame.precipitation || frame.precipitation < 1);
+
+  if (weakDadaeppongWindow) {
+    score = Math.max(score, 68);
+    if (frame.wave_height >= 0.9) score = Math.max(score, 72);
+  }
+
   if (frame.wave_height < 0.5 && spot.region === "songjeong") score = Math.min(score, 58);
   if (frame.wave_height < 0.9 && spot.region === "dadaepo") score = Math.min(score, 62);
+  if (weakDadaeppongWindow) score = Math.max(score, 68);
   if (wind.wind_type === "온쇼어" && frame.wind_speed_10m >= 6) score = Math.min(score, 58);
   if (frame.wind_speed_10m >= 10) score = Math.min(score, 45);
   if (spot.region === "dadaepo" && frame.precipitation >= 5) score = Math.min(score, 55);
@@ -429,6 +496,9 @@ function formatBestWindow(item) {
 
 function buildVerdict(best) {
   if (!best) return "데이터 대기 중";
+  if (best.translated.swell_type === "약다대뽕 스웰" && best.translated.rating !== "별로") {
+    return "크기는 크지 않아도 다대포가 반응할 수 있는 약다대뽕 후보입니다. 현장 체감 확인 가치가 있습니다.";
+  }
   if (best.translated.rating === "좋음") {
     return "한국 기준으로 체크할 만한 시간입니다. 파고, 스웰 방향, 바람 중 핵심 조건이 맞습니다.";
   }
@@ -598,6 +668,22 @@ function renderCriteriaCard() {
   `;
 }
 
+function renderJmaCard() {
+  if (!elements.jmaCard) return;
+
+  elements.jmaCard.innerHTML = `
+    <div class="jma-head">
+      <div>
+        <p class="section-kicker">JMA WAVE MAP</p>
+        <h2>일본 파고 참고</h2>
+      </div>
+      <a href="https://gga.kr/pds/w_.php" target="_blank" rel="noreferrer">원본 보기</a>
+    </div>
+    <p>IMOC/JMA 파고 지도는 부산 앞바다 색상 흐름을 수동 참고합니다. 현재 점수는 Open-Meteo + 로컬 보정 기준이고, 지도 자동 판독은 다음 단계입니다.</p>
+    <img src="https://www.imocwx.com/cwm/cwmsjp_00.png" alt="일본 기상청 파고 지도">
+  `;
+}
+
 function renderDateStrip() {
   const spot = getCurrentSpot();
   if (!spot) {
@@ -724,6 +810,7 @@ function render() {
   renderBestSummary();
   renderTodayCard();
   renderCriteriaCard();
+  renderJmaCard();
   renderDateStrip();
   renderHourlyList();
   renderDetails();
