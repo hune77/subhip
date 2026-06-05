@@ -7,32 +7,32 @@ const JMA_MATCH_WINDOW_MS = 3 * 60 * 60 * 1000;
 
 const SPOTS = [
   {
-    id: "songjeong-lastwave",
-    region: "songjeong",
-    name: "라스트웨이브",
-    shortName: "라스트",
-    fullName: "송정 라스트웨이브 앞",
-    latitude: 35.1787,
-    longitude: 129.1992,
-    beachFacingAngle: 135,
-    idealSwellFrom: 315,
-    tidePreference: "mid-high",
-    beginnerRiskHeight: 1.5,
-    note: "송정 남동향 기준. 북서 계열에서 들어오는 정스웰과 약한 오프쇼어를 우선합니다."
-  },
-  {
     id: "songjeong-surfholic",
     region: "songjeong",
     name: "서프홀릭",
     shortName: "서프홀릭",
     fullName: "송정 서프홀릭 앞",
-    latitude: 35.1793,
-    longitude: 129.2000,
+    latitude: 35.1795,
+    longitude: 129.2015,
     beachFacingAngle: 135,
-    idealSwellFrom: 315,
+    idealSwellFrom: 160,
     tidePreference: "mid-high",
     beginnerRiskHeight: 1.5,
-    note: "송정 남동향 기준. 0.5m 이상 정스웰이면 롱보드 기준 탈만한 시간대로 봅니다."
+    note: "송정 중앙 라인업 기준. S~SE 스웰, 8초 이상 주기, W/NW 오프쇼어를 우선합니다."
+  },
+  {
+    id: "songjeong-lastwave",
+    region: "songjeong",
+    name: "라스트웨이브",
+    shortName: "라스트",
+    fullName: "송정 라스트웨이브 앞",
+    latitude: 35.1768,
+    longitude: 129.1980,
+    beachFacingAngle: 135,
+    idealSwellFrom: 160,
+    tidePreference: "mid-high",
+    beginnerRiskHeight: 1.5,
+    note: "송정 우측 라인 분석 기준. S~SE 스웰은 우선 확인하고, E 스웰은 사이즈가 있을 때만 가산합니다."
   },
   {
     id: "dadaepo-morundae",
@@ -85,7 +85,7 @@ const state = {
   loading: true,
   error: null,
   data: null,
-  currentSpotId: "songjeong-lastwave",
+  currentSpotId: "songjeong-surfholic",
   selectedDate: null,
   showRaw: false,
   listeners: []
@@ -159,6 +159,32 @@ function normalizeAngle(angle) {
 function angularDistance(a, b) {
   const diff = normalizeAngle(a - b);
   return diff === null ? 180 : Math.abs(diff);
+}
+
+function isDirectionBetween(deg, min, max) {
+  if (deg === null || deg === undefined) return false;
+  const normalized = ((deg % 360) + 360) % 360;
+  return min <= max ? normalized >= min && normalized <= max : normalized >= min || normalized <= max;
+}
+
+function isSongjeongOptimalSwellDirection(deg) {
+  return isDirectionBetween(deg, 135, 190);
+}
+
+function isSongjeongEastSwellDirection(deg) {
+  return angularDistance(deg, 90) <= 25;
+}
+
+function isSongjeongBlockedSwellDirection(deg) {
+  return angularDistance(deg, 45) <= 30;
+}
+
+function isSongjeongOffshoreWind(deg) {
+  return angularDistance(deg, 270) <= 35 || angularDistance(deg, 315) <= 35;
+}
+
+function isSongjeongOnshoreWind(deg) {
+  return angularDistance(deg, 180) <= 35 || angularDistance(deg, 225) <= 35;
 }
 
 function directionArrow(deg) {
@@ -348,6 +374,42 @@ function classifySwell(frame, spot) {
     };
   }
 
+  if (spot.region === "songjeong") {
+    if (isSongjeongOptimalSwellDirection(frame.wave_direction)) {
+      return {
+        type: "남~남동 스웰",
+        passed: waveHeight >= 0.5,
+        diff: angularDistance(frame.wave_direction, 160),
+        comment: "송정이 정면으로 받기 쉬운 S~SE 계열입니다. 사이즈가 받쳐주면 메인 라인업이 살아날 가능성이 높습니다."
+      };
+    }
+
+    if (isSongjeongEastSwellDirection(frame.wave_direction)) {
+      return {
+        type: "동스웰",
+        passed: waveHeight >= 0.8,
+        diff: angularDistance(frame.wave_direction, 90),
+        comment: "동쪽 계열이라 완전 정면은 아니지만, 사이즈가 있으면 송정에서 탈 만한 파도가 생길 수 있습니다."
+      };
+    }
+
+    if (isSongjeongBlockedSwellDirection(frame.wave_direction)) {
+      return {
+        type: "북동 스웰",
+        passed: false,
+        diff: angularDistance(frame.wave_direction, 45),
+        comment: "NE 계열은 방파제와 해안 지형 영향으로 차트보다 약하거나 정리되지 않을 가능성이 큽니다."
+      };
+    }
+
+    return {
+      type: "송정 비주류 스웰",
+      passed: false,
+      diff: angularDistance(frame.wave_direction, 160),
+      comment: "송정 메인 라인업 기준으로는 방향 메리트가 약합니다. JMA 보정 파고가 커도 현장 확인이 필요합니다."
+    };
+  }
+
   const diff = angularDistance(frame.wave_direction, spot.idealSwellFrom);
 
   if (diff <= 45) {
@@ -431,8 +493,9 @@ function translateWavePeriod(period, spot) {
   if (period === null || period === undefined) return "주기 데이터가 아직 없습니다.";
 
   if (spot.region === "songjeong") {
-    if (period >= 9) return "송정은 긴 피리어드가 덤프 성향을 만들 수 있습니다. 무조건 가산하지 않습니다.";
-    if (period >= 6) return "송정 기준 무난한 주기입니다. 파고와 스웰 방향이 더 중요합니다.";
+    if (period >= 10) return "송정은 10초 이상 긴 피리어드에서 사이즈가 크면 덤프 성향이 생길 수 있습니다. 현장 체크가 필요합니다.";
+    if (period >= 8) return "송정 기준 힘이 잘 붙는 좋은 주기입니다. S~SE 스웰과 약한 바람이면 우선 확인할 만합니다.";
+    if (period >= 6) return "송정 기준 탈 수 있는 최소권 주기입니다. 파고와 스웰 방향이 더 중요합니다.";
     return "주기가 짧아 힘이 약할 수 있습니다.";
   }
 
@@ -449,6 +512,34 @@ function getSuitRecommendation(temp) {
   return "보드숏 또는 래시가드";
 }
 
+function calculateSongjeongSurfScore(frame) {
+  const waveHeight = scoreWaveHeight(frame);
+  const windSpeedKmh = typeof frame.wind_speed_10m === "number" ? frame.wind_speed_10m * 3.6 : null;
+  let score = 0;
+
+  if (isSongjeongOptimalSwellDirection(frame.wave_direction)) score += 30;
+  else if (isSongjeongEastSwellDirection(frame.wave_direction)) score += 15;
+  else if (isSongjeongBlockedSwellDirection(frame.wave_direction)) score -= 10;
+
+  if (frame.wave_period >= 8) score += 40;
+  else if (frame.wave_period >= 6) score += 20;
+
+  if (windSpeedKmh !== null && windSpeedKmh <= 5) score += 30;
+  else if (isSongjeongOffshoreWind(frame.wind_direction_10m)) score += 30;
+  else if (isSongjeongOnshoreWind(frame.wind_direction_10m)) score -= 20;
+
+  if (waveHeight < 0.4) score = Math.min(score, 45);
+  else if (waveHeight < 0.5) score = Math.min(score, 58);
+  else if (waveHeight < 0.8) score = Math.min(score, 76);
+  else score += 6;
+
+  if (waveHeight >= 1.5) score = Math.min(score, 78);
+  if (frame.wave_period >= 10 && waveHeight >= 1.0) score = Math.min(score, 72);
+  if (frame.wind_speed_10m >= 10) score = Math.min(score, 45);
+
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
 function scoreHour(frame, spot) {
   const wind = classifyWind(frame.wind_direction_10m, spot.beachFacingAngle);
   const swell = classifySwell(frame, spot);
@@ -457,14 +548,7 @@ function scoreHour(frame, spot) {
   let score = 42;
 
   if (spot.region === "songjeong") {
-    if (waveHeight >= 0.5) score += 16;
-    if (waveHeight >= 0.8) score += 18;
-    if (waveHeight >= 1.5) score -= 18;
-    if (swell.type === "정스웰") score += 24;
-    else if (swell.type === "비스듬한 스웰") score += 8;
-    else score -= 18;
-    if (frame.wave_period >= 6 && frame.wave_period < 9) score += 8;
-    if (frame.wave_period >= 9) score -= 8;
+    score = calculateSongjeongSurfScore(frame);
   } else {
     if (waveHeight >= 0.75) score += 10;
     if (waveHeight >= 0.9) score += 18;
@@ -480,9 +564,9 @@ function scoreHour(frame, spot) {
     else score -= 10;
   }
 
-  if (wind.wind_type === "오프쇼어") score += frame.wind_speed_10m <= 5 ? 16 : 8;
-  if (wind.wind_type === "온쇼어") score -= frame.wind_speed_10m >= 6 ? 24 : 12;
-  if (frame.wind_speed_10m <= 5) score += 6;
+  if (spot.region !== "songjeong" && wind.wind_type === "오프쇼어") score += frame.wind_speed_10m <= 5 ? 16 : 8;
+  if (spot.region !== "songjeong" && wind.wind_type === "온쇼어") score -= frame.wind_speed_10m >= 6 ? 24 : 12;
+  if (spot.region !== "songjeong" && frame.wind_speed_10m <= 5) score += 6;
   if (frame.wind_speed_10m >= 10) score -= 24;
   if (tide.passed) score += spot.region === "dadaepo" ? 10 : 4;
   if (spot.region === "dadaepo" && frame.precipitation >= 1) score -= 6;
@@ -559,8 +643,10 @@ function conditionChecks(item) {
   const tide = classifyTide(item, spot);
   const waveHeight = scoreWaveHeight(item);
   const wavePass = spot.region === "songjeong" ? waveHeight >= 0.5 : waveHeight >= 1.0;
-  const periodPass = spot.region === "songjeong" ? item.wave_period >= 6 && item.wave_period < 9 : item.wave_period >= 6.5;
-  const windPass = item.wind_speed_10m <= 5 || (item.translated.wind_type === "오프쇼어" && item.wind_speed_10m <= 7);
+  const periodPass = spot.region === "songjeong" ? item.wave_period >= 6 : item.wave_period >= 6.5;
+  const windPass = spot.region === "songjeong"
+    ? (item.wind_speed_10m ?? 99) * 3.6 <= 5 || isSongjeongOffshoreWind(item.wind_direction_10m)
+    : item.wind_speed_10m <= 5 || (item.translated.wind_type === "오프쇼어" && item.wind_speed_10m <= 7);
   const rainPass = spot.region !== "dadaepo" || !item.precipitation || item.precipitation < 1;
 
   const checks = [
@@ -738,7 +824,7 @@ function renderCriteriaCard() {
   const checks = conditionChecks(best);
   const criteriaText =
     spot.region === "songjeong"
-      ? "송정: 0.5m 이상 + 정스웰 + 5m/s 이하 바람을 우선. 긴 피리어드는 덤프 가능성으로 감점."
+      ? "송정: S~SE 스웰 최우선, E 스웰은 사이즈가 있을 때만. 8초 이상 주기와 W/NW 오프쇼어를 가산하고, NE 스웰과 S/SW 온쇼어는 감점."
       : "다대포: 남스웰 + 1.0m 전후 이상 + 6m/s 이하 바람 + 포인트별 타이드 선호를 우선.";
 
   elements.criteriaCard.innerHTML = `
