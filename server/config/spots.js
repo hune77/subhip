@@ -1,19 +1,5 @@
 const SPOTS = [
   {
-    id: "songjeong-surfholic",
-    region: "songjeong",
-    name: "서프홀릭",
-    shortName: "서프홀릭",
-    fullName: "송정 서프홀릭 앞",
-    latitude: 35.1795,
-    longitude: 129.2015,
-    beachFacingAngle: 135,
-    idealSwellFrom: 160,
-    tidePreference: "mid-high",
-    beginnerRiskHeight: 1.5,
-    note: "송정 중앙 라인업 기준. S~SE 스웰, 약한 W~N 계열 오프쇼어, 중물에서 만조 접근 구간을 좋게 봅니다."
-  },
-  {
     id: "songjeong-lastwave",
     region: "songjeong",
     name: "라스트웨이브",
@@ -25,7 +11,23 @@ const SPOTS = [
     idealSwellFrom: 160,
     tidePreference: "mid-high",
     beginnerRiskHeight: 1.5,
-    note: "송정 우측 라인업 기준. SE~SSE 스웰을 우선하고, E 계열은 사이즈가 받쳐줄 때만 가점합니다."
+    note: "송정 남측 라인업, 라스트웨이브 앞바다 포인트입니다. 남동~남서 스웰에 반응하며, 중물 때 가장 컨디션이 좋습니다.",
+    mapImage: "./assets/songjeong-lastwave-map.png"
+  },
+  {
+    id: "songjeong-surfholic",
+    region: "songjeong",
+    name: "서프홀릭",
+    shortName: "서프홀릭",
+    fullName: "송정 서프홀릭 앞",
+    latitude: 35.1795,
+    longitude: 129.2015,
+    beachFacingAngle: 135,
+    idealSwellFrom: 160,
+    tidePreference: "mid-high",
+    beginnerRiskHeight: 1.5,
+    note: "송정 중앙~우측 라인업, 서프홀릭 앞바다 포인트입니다. 남동~남서 스웰에 반응하며, 중물 상승~만조 전이 좋습니다.",
+    mapImage: "./assets/songjeong-surfholic-map.png"
   },
   {
     id: "dadaepo-morundae",
@@ -75,7 +77,7 @@ const SPOTS = [
 ];
 
 const SPOT_ALIASES = {
-  songjeong: "songjeong-surfholic",
+  songjeong: "songjeong-lastwave",
   dadaepo: "dadaepo-mid"
 };
 

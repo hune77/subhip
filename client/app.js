@@ -5,30 +5,8 @@ const TIMEZONE = "Asia/Seoul";
 const JMA_BLEND_WEIGHT = 0.4;
 const JMA_MATCH_WINDOW_MS = 3 * 60 * 60 * 1000;
 const surfScoring = globalThis.SurfScoring || null;
-const HERO_IMAGES = [
-  "./assets/subhip-card.jpg",
-  "./assets/subhip-hero-homer.webp",
-  "./assets/subhip-hero-bart.webp",
-  "./assets/subhip-hero-skate-wide.jpg",
-  "./assets/subhip-hero-skate-small.jpg",
-  "./assets/subhip-hero-family.jpg"
-];
 
 const SPOTS = [
-  {
-    id: "songjeong-surfholic",
-    region: "songjeong",
-    name: "서프홀릭",
-    shortName: "서프홀릭",
-    fullName: "송정 서프홀릭 앞",
-    latitude: 35.1795,
-    longitude: 129.2015,
-    beachFacingAngle: 135,
-    idealSwellFrom: 160,
-    tidePreference: "mid-high",
-    beginnerRiskHeight: 1.5,
-    note: "송정 중앙 라인업 기준. S~SE 스웰, 8초 이상 주기, W/NW 오프쇼어를 우선합니다."
-  },
   {
     id: "songjeong-lastwave",
     region: "songjeong",
@@ -41,7 +19,23 @@ const SPOTS = [
     idealSwellFrom: 160,
     tidePreference: "mid-high",
     beginnerRiskHeight: 1.5,
-    note: "송정 우측 라인 분석 기준. S~SE 스웰은 우선 확인하고, E 스웰은 사이즈가 있을 때만 가산합니다."
+    note: "송정 남측 라인업, 라스트웨이브 앞바다 포인트입니다. 남동~남서 스웰에 반응하며, 중물 때 가장 컨디션이 좋습니다.",
+    mapImage: "./assets/songjeong-lastwave-map.png"
+  },
+  {
+    id: "songjeong-surfholic",
+    region: "songjeong",
+    name: "서프홀릭",
+    shortName: "서프홀릭",
+    fullName: "송정 서프홀릭 앞",
+    latitude: 35.1795,
+    longitude: 129.2015,
+    beachFacingAngle: 135,
+    idealSwellFrom: 160,
+    tidePreference: "mid-high",
+    beginnerRiskHeight: 1.5,
+    note: "송정 중앙~우측 라인업, 서프홀릭 앞바다 포인트입니다. 남동~남서 스웰에 반응하며, 중물 상승~만조 전이 좋습니다.",
+    mapImage: "./assets/songjeong-surfholic-map.png"
   },
   {
     id: "dadaepo-morundae",
@@ -94,7 +88,7 @@ const state = {
   loading: true,
   error: null,
   data: null,
-  currentSpotId: "songjeong-surfholic",
+  currentSpotId: "songjeong-lastwave",
   selectedDate: null,
   showRaw: false,
   listeners: []
@@ -307,16 +301,6 @@ function compactWaveSourceText(label) {
   if (label.startsWith("JMA")) return "JMA 보정";
   if (label.includes("JMA")) return "Open-Meteo+JMA";
   return "Open-Meteo";
-}
-
-function hashString(value) {
-  return String(value).split("").reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) | 0, 0);
-}
-
-function heroImageFor(item, spot) {
-  if (!item) return HERO_IMAGES[0];
-  const index = Math.abs(hashString(`${spot.id}-${item.date}-${item.hour}`)) % HERO_IMAGES.length;
-  return HERO_IMAGES[index];
 }
 
 function formatNumber(value, digits = 1) {
@@ -997,13 +981,11 @@ function renderTodayCard() {
   const best = getBestHourForSelectedDate();
 
   if (state.loading || !spot) {
-    elements.todayCard.style.removeProperty("--hero-image");
     elements.todayCard.innerHTML = `<div class="hero-content"><p>예보 데이터를 준비하고 있습니다.</p></div>`;
     return;
   }
 
   if (!best) {
-    elements.todayCard.style.removeProperty("--hero-image");
     elements.todayCard.innerHTML = `<div class="hero-content"><p>선택한 날짜에는 05:00~19:00 기준 추천 가능한 데이터가 없습니다.</p></div>`;
     return;
   }
@@ -1014,7 +996,6 @@ function renderTodayCard() {
   const gear = gearRecommendation(best);
   const board = boardRecommendation(best, spot);
   const sourceLabel = best.translated.wave_source_label || waveSourceText(best);
-  const heroImage = heroImageFor(best, spot);
   const heroTitle =
     best.translated.rating === "좋음"
       ? `${best.hour} GO`
@@ -1022,7 +1003,6 @@ function renderTodayCard() {
         ? `${best.hour} CHECK`
         : `${best.hour} SKIP`;
 
-  elements.todayCard.style.setProperty("--hero-image", `url("${heroImage}")`);
   elements.todayCard.innerHTML = `
     <div class="hero-content">
       <div class="hero-topline">
@@ -1043,36 +1023,17 @@ function renderTodayCard() {
       <p class="hero-signal"><span>SUBHIP SIGNAL</span>${buildVerdict(best)}</p>
       <p class="hero-beginner">${todayBeginnerSummary(best, spot)}</p>
       <div class="metric-row">
-        <div class="metric"><span>파도 크기</span><strong>${best.translated.wave_height_used ?? scoreWaveHeight(best) ?? "-"}m</strong><em>주기 ${best.wave_period ?? "-"}초</em></div>
-        <div class="metric"><span>스웰</span><strong>${best.translated.swell_type}</strong><em>먼바다 파도 방향</em></div>
-        <div class="metric"><span>바람</span><strong>${best.translated.wind_type}</strong><em>${best.wind_speed_10m ?? "-"}m/s · 돌풍 ${best.wind_gusts_10m ?? "-"}m/s</em></div>
-        <div class="metric"><span>조위</span><strong>${best.translated.tide_type}</strong><em>${tidePhaseLabel(best.translated.tide_phase_advanced || best.tide_phase_advanced)}</em></div>
-        <div class="metric"><span>기온/수온</span><strong>${formatNumber(best.temperature_2m)}° / ${formatNumber(best.sea_surface_temperature)}°</strong><em>체감 ${formatNumber(best.apparent_temperature)}°C</em></div>
-        <div class="metric"><span>비</span><strong>${rain.label}</strong><em>${rain.detail}</em></div>
-        <div class="metric"><span>강풍·태풍성</span><strong>${storm.label}</strong><em>${storm.detail}</em></div>
-        <div class="metric"><span>파고 출처</span><strong>${compactWaveSourceText(sourceLabel)}</strong><em>Open-Meteo는 예보 API</em></div>
+        <div class="metric is-wave"><span>파도/주기</span><strong>${best.translated.wave_height_used ?? scoreWaveHeight(best) ?? "-"}m · ${best.wave_period ?? "-"}초</strong><em>${board.detail}</em></div>
+        <div class="metric is-swell"><span>스웰</span><strong>${best.translated.swell_type}</strong><em>먼바다에서 들어오는 파도 방향</em></div>
+        <div class="metric is-wind"><span>바람</span><strong>${best.translated.wind_type}</strong><em>${best.wind_speed_10m ?? "-"}m/s · 돌풍 ${best.wind_gusts_10m ?? "-"}m/s</em></div>
+        <div class="metric is-tide"><span>조위</span><strong>${best.translated.tide_type}</strong><em>${tidePhaseLabel(best.translated.tide_phase_advanced || best.tide_phase_advanced)}</em></div>
+        <div class="metric is-weather"><span>비/강풍·태풍성</span><strong>${rain.label} · ${storm.label}</strong><em>기온 ${formatNumber(best.temperature_2m)}° · 수온 ${formatNumber(best.sea_surface_temperature)}°</em></div>
+        <div class="metric is-gear"><span>보드/옷</span><strong>${board.label}</strong><em>${gear.label}</em></div>
       </div>
-      <div class="hero-advice-grid">
-        <div class="hero-advice">
-          <span>보드 추천</span>
-          <strong>${board.label}</strong>
-          <p>${board.detail}</p>
-        </div>
-        <div class="hero-advice">
-          <span>옷 추천</span>
-          <strong>${gear.label}</strong>
-          <p>${gear.detail}</p>
-        </div>
-      </div>
-      <div class="beginner-guide">
-        <div>
-          <strong>스웰</strong>
-          <p>${beginnerSwellText(best, spot)}</p>
-        </div>
-        <div>
-          <strong>오프쇼어/온쇼어</strong>
-          <p>${beginnerWindText(best)}</p>
-        </div>
+      <div class="hero-mini-guide">
+        <span><strong>스웰</strong>${beginnerSwellText(best, spot)}</span>
+        <span><strong>바람</strong>${beginnerWindText(best)}</span>
+        <span><strong>출처</strong>${compactWaveSourceText(sourceLabel)}: Open-Meteo는 예보 API, JMA는 앞 3일 파고 보정</span>
       </div>
     </div>
   `;
