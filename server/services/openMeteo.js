@@ -36,7 +36,7 @@ async function fetchWeatherForecast(spot) {
       params: {
         latitude: spot.latitude,
         longitude: spot.longitude,
-        hourly: "wind_speed_10m,wind_direction_10m,precipitation",
+        hourly: "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation",
         wind_speed_unit: "ms",
         timezone: TIMEZONE,
         forecast_days: 7

@@ -230,11 +230,21 @@
     return { score: nextScore, risk };
   }
 
-  function applySongjeongCaps(score, frame, flags) {
+function applySongjeongCaps(score, frame, flags) {
     let nextScore = score;
     let beginnerWarning = false;
     const height = waveHeightUsed(frame);
 
+    if (height < 0.4) {
+      nextScore = Math.min(nextScore, 45);
+      flags.push("송정 기준 파고가 너무 작음");
+    } else if (height < 0.5) {
+      nextScore = Math.min(nextScore, 58);
+      flags.push("롱보드로도 약한 사이즈");
+    } else if (height < 0.8) {
+      nextScore = Math.min(nextScore, 70);
+      flags.push("탈 수는 있지만 좋은 사이즈는 아님");
+    }
     if (height >= 1.0 && frame?.wave_period >= 10) {
       nextScore = Math.min(nextScore, 72);
       flags.push("송정 장주기 덤프 가능성");
