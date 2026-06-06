@@ -4,6 +4,7 @@ const JMA_WAVE_DATA_URL = "./data/jma-wave.json";
 const TIMEZONE = "Asia/Seoul";
 const JMA_BLEND_WEIGHT = 0.4;
 const JMA_MATCH_WINDOW_MS = 3 * 60 * 60 * 1000;
+const surfScoring = globalThis.SurfScoring || null;
 
 const SPOTS = [
   {
@@ -675,9 +676,10 @@ function translateFrame(frame, spot) {
   const wind = classifyWind(frame.wind_direction_10m, spot.beachFacingAngle);
   const swell = classifySwell(frame, spot);
   const tide = classifyTide(frame, spot);
-  const score = scoreHour(frame, spot);
-  const rating = ratingFromScore(score);
-  const waveHeight = scoreWaveHeight(frame);
+  const localScore = surfScoring?.calculateSurfScore(frame, spot) || null;
+  const score = localScore?.score ?? scoreHour(frame, spot);
+  const rating = localScore?.rating ?? ratingFromScore(score);
+  const waveHeight = localScore?.wave_height_used ?? scoreWaveHeight(frame);
   const sourceSuffix = frame.jma_wave?.available ? " · JMA 보정" : " · Open-Meteo 단독";
 
   return {
@@ -694,6 +696,16 @@ function translateFrame(frame, spot) {
     swell_comment: swell.comment,
     tide_type: tide.type,
     tide_comment: tide.comment,
+    flags: localScore?.flags || [],
+    confidence: localScore?.confidence || "normal",
+    dadaeppong_grade: localScore?.dadaeppong_grade || null,
+    tide_phase_advanced: localScore?.tide_phase_advanced || frame.tide_phase_advanced || "unknown",
+    tide_trend: localScore?.tide_trend || frame.tide_trend || "unknown",
+    wave_height_used: waveHeight,
+    wave_source_label: localScore?.wave_source_label || waveSourceText(frame),
+    current_risk: Boolean(localScore?.current_risk),
+    beginner_warning: Boolean(localScore?.beginner_warning),
+    local_comment: localScore?.local_comment || "",
     summary: `${rating}: 파고 ${waveHeight ?? "-"}m, 주기 ${frame.wave_period ?? "-"}초, ${swell.type}, 바람 ${wind.wind_type}${sourceSuffix}`
   };
 }
@@ -708,7 +720,7 @@ function conditionChecks(item) {
   const spot = getCurrentSpot();
   const swell = classifySwell(item, spot);
   const tide = classifyTide(item, spot);
-  const waveHeight = scoreWaveHeight(item);
+  const waveHeight = item.translated?.wave_height_used ?? scoreWaveHeight(item);
   const wavePass = spot.region === "songjeong" ? waveHeight >= 0.5 : waveHeight >= 1.0;
   const periodPass = spot.region === "songjeong" ? item.wave_period >= 6 : item.wave_period >= 6.5;
   const windPass = spot.region === "songjeong"
@@ -726,6 +738,9 @@ function conditionChecks(item) {
 
   if (spot.region === "dadaepo") {
     checks.push({ key: "rain", label: "비", passed: rainPass, value: `${item.precipitation ?? 0}mm` });
+    if (item.translated?.dadaeppong_grade) {
+      checks.push({ key: "grade", label: "등급", passed: item.translated.dadaeppong_grade !== "비추천", value: item.translated.dadaeppong_grade });
+    }
   }
 
   return checks;
@@ -1003,6 +1018,23 @@ function renderDetails() {
     }
   ];
 
+  const flags = best.translated.flags || [];
+  const localNotes = [
+    best.translated.local_comment,
+    best.translated.dadaeppong_grade ? `다대뽕 등급: ${best.translated.dadaeppong_grade}` : null,
+    best.translated.confidence ? `예보 신뢰도: ${best.translated.confidence}` : null,
+    best.translated.wave_source_label ? `파고 소스: ${best.translated.wave_source_label}` : null,
+    flags.length ? `주의: ${flags.join(" / ")}` : null
+  ].filter(Boolean);
+
+  if (localNotes.length) {
+    cards.splice(1, 0, {
+      icon: "ph-flag",
+      title: "현장형 보정",
+      body: localNotes.join("<br>")
+    });
+  }
+
   if (spot.map_image) {
     cards.unshift({
       icon: "ph-image",
@@ -1070,6 +1102,8 @@ function assignTidePhases(hourly) {
     items.forEach((item) => {
       if (typeof item.sea_level_height_msl !== "number") {
         item.tide_phase = "unknown";
+        item.tide_trend = "unknown";
+        item.tide_phase_advanced = "unknown";
         return;
       }
 
@@ -1078,6 +1112,21 @@ function assignTidePhases(hourly) {
       else if (normalized <= 0.33) item.tide_phase = "low";
       else item.tide_phase = "mid";
     });
+
+    items.forEach((item, index) => {
+      const prevLevel = items[index - 1]?.sea_level_height_msl;
+      const nextLevel = items[index + 1]?.sea_level_height_msl;
+      item.tide_trend = surfScoring?.calculateTideTrend(prevLevel, item.sea_level_height_msl, nextLevel) || "unknown";
+      item.tide_phase_advanced =
+        surfScoring?.calculateAdvancedTidePhase(item, { min, max, range }) || item.tide_phase;
+    });
+  });
+
+  hourly.forEach((item, index) => {
+    const recent = hourly.slice(Math.max(0, index - 5), index + 1);
+    item.recent_6h_precipitation = Math.round(
+      recent.reduce((sum, frame) => sum + (typeof frame.precipitation === "number" ? frame.precipitation : 0), 0) * 10
+    ) / 10;
   });
 
   return hourly;
@@ -1106,7 +1155,7 @@ function buildDailySummaries(hourly) {
       rating: bestHour?.translated.rating || "정보 없음",
       avg_score: avgScore,
       best_score: bestHour?.translated.score || null,
-      source_label: bestHour ? waveSourceText(bestHour) : "Open-Meteo 단독",
+      source_label: bestHour ? bestHour.translated?.wave_source_label || waveSourceText(bestHour) : "Open-Meteo 단독",
       summary: bestHour ? `${bestHour.hour} 전후가 가장 무난합니다. ${bestHour.translated.summary}` : "05:00~19:00 추천 데이터가 없습니다."
     };
   });

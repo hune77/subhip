@@ -17,7 +17,7 @@ async function fetchMarineForecast(spot) {
       params: {
         latitude: spot.latitude,
         longitude: spot.longitude,
-        hourly: "wave_height,wave_period,wave_direction,sea_surface_temperature",
+        hourly: "wave_height,wave_period,wave_direction,sea_surface_temperature,sea_level_height_msl",
         timezone: TIMEZONE,
         forecast_days: 7,
         cell_selection: "sea"
@@ -30,13 +30,13 @@ async function fetchMarineForecast(spot) {
   }
 }
 
-async function fetchWindForecast(spot) {
+async function fetchWeatherForecast(spot) {
   try {
     const response = await http.get(WEATHER_API_URL, {
       params: {
         latitude: spot.latitude,
         longitude: spot.longitude,
-        hourly: "wind_speed_10m,wind_direction_10m",
+        hourly: "wind_speed_10m,wind_direction_10m,precipitation",
         wind_speed_unit: "ms",
         timezone: TIMEZONE,
         forecast_days: 7
@@ -52,7 +52,7 @@ async function fetchWindForecast(spot) {
 async function fetchOpenMeteoForecast(spot) {
   const [marine, wind] = await Promise.all([
     fetchMarineForecast(spot),
-    fetchWindForecast(spot)
+    fetchWeatherForecast(spot)
   ]);
 
   return {

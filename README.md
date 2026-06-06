@@ -183,6 +183,31 @@ GET /api/surf-data/refresh
 - 실제 입수 가능성이 낮은 `20:00~04:00` 데이터는 추천, 일별 요약, 시간별 차트에서 제외합니다.
 - 화면과 베스트 계산은 `05:00~19:00` 시간대만 사용합니다.
 
+## 5개 포인트 현장형 점수 보정
+
+점수 계산은 `shared/surfScoring.js`의 순수 함수로 분리되어 `docs/app.js`, `client/app.js`, `server/utils/translator.js`가 같은 기준을 공유합니다. 기존 `score`, `rating`, `wave_height`, `wave_period`, `wave_direction`, `wind_speed`, `wind_direction` 필드는 유지하고, 새 판단 정보는 optional 필드로 붙입니다.
+
+- 송정 서프홀릭: 0.4~1.2m, 7~12초, ESE~SE~SSE 스웰, WNW~N 약한 오프쇼어, `mid_rising`/`high_approach` 조위를 우선합니다.
+- 송정 라스트웨이브: 0.5~1.3m, 7~12초, SE~SSE 스웰을 더 강하게 보고 E 계열은 사이즈가 있을 때만 가점합니다.
+- 다대포 몰운대: 상대적으로 작게 들어오는 포인트라 체감 사이즈에 0.9 보정을 두고, 남스웰과 중물 이후를 우선합니다.
+- 다대포 미드: 메인 다대뽕 포인트입니다. 남스웰, 0.8~1.4m, 8초 이상, 약한 북~북서풍, 중물 상승~만조 접근이면 `다대뽕` 후보로 봅니다.
+- 다대포 송안: 항상 조류/라인업 거리 리스크가 붙고 최고점을 80점으로 제한합니다. 초보자 단독 입수는 비추천입니다.
+
+다대포 등급은 `다대뽕`, `약다대뽕`, `애매하지만 체크`, `남스웰 양호`, `비추천`으로 나눕니다. 등급이 좋아도 무조건 100점을 주지 않고, 등급별 상한과 조류/강수/과한 사이즈 플래그를 먼저 적용합니다.
+
+새 optional 출력 필드:
+
+- `flags`: 장주기 덤프, 온쇼어, 예보 불일치, 비 직후 리버마우스 리스크 같은 주의 신호
+- `confidence`: `high`, `medium`, `low`, `normal`
+- `dadaeppong_grade`: 다대포 포인트 전용 등급
+- `tide_phase_advanced`: `low`, `low_rising`, `low_mid`, `mid_rising`, `high_approach`, `high_falling`, `mid_falling`
+- `tide_trend`: `rising`, `falling`, `turning`, `unknown`
+- `wave_height_used`: 실제 점수 계산에 사용한 파고
+- `wave_source_label`: `Open-Meteo 단독`, `JMA 보정`, `Open-Meteo + JMA 보정`
+- `current_risk`, `beginner_warning`, `local_comment`
+
+JMA/IMOC 파고 보정은 현재 지도 데이터 특성상 약 3일치만 신뢰도 높은 보정으로 쓰고, 4일째부터는 `Open-Meteo 단독`으로 명시합니다. 하루가 지나면 GitHub Actions 또는 `npm run update:jma`가 새 3일 구간을 다시 갱신합니다.
+
 ## 파도 방향 판정
 
 `wave_direction - beach_facing_angle`을 계산한 뒤 -180도 ~ 180도 범위로 정규화합니다.

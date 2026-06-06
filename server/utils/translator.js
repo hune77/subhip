@@ -1,3 +1,4 @@
+const SurfScoring = require("../../shared/surfScoring");
 const { normalizeAngle } = require("./waveDirection");
 
 function valueLabel(value, unit) {
@@ -7,65 +8,59 @@ function valueLabel(value, unit) {
   return `${value}${unit}`;
 }
 
-function translateWaveHeight(height) {
+function translateWaveHeight(height, spot = {}) {
   if (height === null || height === undefined) {
     return "파고 데이터가 아직 없습니다.";
   }
-  if (height < 0.4) {
-    return "너무 작습니다. 서핑보다는 패들, 테이크오프 연습 정도로 보는 날입니다.";
+
+  if (spot.region === "songjeong") {
+    if (height < 0.4) return "송정 기준으로는 작습니다. 롱보드로도 재미가 약할 수 있습니다.";
+    if (height < 0.5) return "작지만 정스웰과 약한 바람이면 롱보드 체크는 가능합니다.";
+    if (height < 0.8) return "송정에서 탈 만한 기본 사이즈입니다. 방향과 바람이 중요합니다.";
+    if (height < 1.5) return "송정 기준 좋은 사이즈입니다. 장주기면 덤프 가능성도 같이 봐야 합니다.";
+    return "송정 기준 강한 사이즈입니다. 초보자는 위험할 수 있습니다.";
   }
-  if (height < 0.8) {
-    return "작은 파도입니다. 롱보드나 소프트보드로 가볍게 놀 수는 있지만 좋은 날로 보긴 어렵습니다.";
-  }
-  if (height < 1.0) {
-    return "탈 수는 있지만 아직 약간 아쉽습니다. 바람과 주기가 좋아야 재미가 납니다.";
-  }
-  if (height <= 1.5) {
-    return "서핑하기 좋은 크기입니다. 면이 깨끗하면 충분히 즐길 만한 컨디션입니다.";
-  }
-  if (height <= 1.8) {
-    return "힘 있는 파도입니다. 중급 이상에게는 좋을 수 있지만 라인업과 안전을 확인하세요.";
-  }
-  return "큰 파도입니다. 경험자 기준에서도 컨디션과 안전 확인이 먼저입니다.";
+
+  if (height < 0.5) return "다대포 기준으로 작습니다. 스팟과 물때가 받쳐줘야 합니다.";
+  if (height < 0.8) return "다대포에서는 애매하지만 남동~남스웰과 약한 바람이면 체크할 만합니다.";
+  if (height < 1.4) return "다대포 기준 좋은 사이즈입니다. 남스웰과 물때가 맞으면 기대할 수 있습니다.";
+  if (height < 1.8) return "다대포에서 힘 있는 사이즈입니다. 조류와 라인업 거리를 확인하세요.";
+  return "다대포 기준 강한 사이즈입니다. 조류, 유속, 초중급 안전 리스크를 먼저 봐야 합니다.";
 }
 
 function translateWaterTemperature(temp) {
   if (temp === null || temp === undefined) {
     return "수온 데이터가 아직 없습니다.";
   }
-  if (temp <= 14) {
-    return "수온이 낮습니다. 5/4mm 풀슈트와 부츠, 글러브를 권장합니다.";
-  }
-  if (temp <= 18) {
-    return "3/2mm 풀슈트를 추천합니다. 오래 타면 체온 관리가 필요합니다.";
-  }
-  if (temp <= 22) {
-    return "스프링슈트나 얇은 풀슈트가 무난합니다.";
-  }
-  return "보드숏이나 래시가드도 고려할 수 있는 따뜻한 수온입니다.";
+  if (temp <= 14) return "수온이 낮습니다. 5/4mm 웻슈트와 부츠, 글러브를 권장합니다.";
+  if (temp <= 18) return "3/2mm 웻슈트가 무난합니다.";
+  if (temp <= 22) return "스프링슈트나 얇은 웻슈트를 고려하세요.";
+  return "보드숏이나 래시가드도 가능한 따뜻한 수온입니다.";
 }
 
-function translateWavePeriod(period) {
+function translateWavePeriod(period, spot = {}) {
   if (period === null || period === undefined) {
     return "주기 데이터가 아직 없습니다.";
   }
-  if (period >= 9) {
-    return "주기가 좋아 파도가 힘 있게 밀고 들어올 가능성이 큽니다.";
+
+  if (spot.region === "songjeong") {
+    if (period >= 10) return "송정은 장주기와 1m 이상 파고가 만나면 덤프 성향이 생길 수 있습니다.";
+    if (period >= 7) return "송정에서 힘이 붙는 주기입니다. 정스웰이면 체크 가치가 있습니다.";
+    if (period >= 6) return "탈 수는 있지만 힘이 약할 수 있습니다.";
+    return "주기가 짧아 파도가 급하고 힘이 약할 수 있습니다.";
   }
-  if (period >= 7) {
-    return "주기가 무난합니다. 파고가 받쳐주면 충분히 탈 만합니다.";
-  }
-  if (period >= 6) {
-    return "주기가 짧은 편입니다. 파도가 빨리 무너질 수 있습니다.";
-  }
-  return "주기가 짧아 파도가 힘 없이 부서질 가능성이 큽니다.";
+
+  if (period >= 8) return "다대포에서 다대뽕을 기대할 수 있는 주기권입니다.";
+  if (period >= 7) return "다대포 약다대뽕 체크가 가능한 최소 주기권입니다.";
+  if (period >= 6) return "다대포 기준 최소권입니다. 다른 조건이 좋아야 합니다.";
+  return "주기가 짧아 다대포에서도 힘이 부족할 수 있습니다.";
 }
 
 function classifyWind(windDirection, beachFacingAngle) {
   if (windDirection === null || windDirection === undefined) {
     return {
       wind_type: "바람 정보 없음",
-      wind_comment: "바람 방향 데이터가 없어 파도 면 상태를 판단하지 않았습니다."
+      wind_comment: "바람 방향 데이터가 없어 파도 면 상태를 판단하지 않습니다."
     };
   }
 
@@ -75,141 +70,120 @@ function classifyWind(windDirection, beachFacingAngle) {
   if (offshoreDiff <= 60) {
     return {
       wind_type: "오프쇼어",
-      wind_comment: "육지에서 바다로 부는 바람입니다. 파도 면이 정리될 가능성이 높습니다."
+      wind_comment: "해변에서 바다로 부는 바람입니다. 약하면 파도 면이 정리될 가능성이 높습니다."
     };
   }
 
   if (onshoreDiff <= 60) {
     return {
       wind_type: "온쇼어",
-      wind_comment: "바다에서 육지로 부는 바람입니다. 파도 면이 지저분하고 힘이 흩어질 수 있습니다."
+      wind_comment: "바다에서 해변으로 부는 바람입니다. 강하면 파도가 빨리 무너지고 지저분해집니다."
     };
   }
 
   return {
     wind_type: "사이드 바람",
-    wind_comment: "해변을 비스듬히 가르는 바람입니다. 강하면 라인 잡기가 어려울 수 있습니다."
+    wind_comment: "해변을 비스듬히 가르는 바람입니다. 약하면 무난하지만 강하면 라인 유지가 어려울 수 있습니다."
   };
 }
 
+function windCommentFromScore(localScore) {
+  if (localScore.wind_class === "offshore") {
+    return "오프쇼어 또는 크로스오프 성향이라 약하면 파도 면 정리에 유리합니다.";
+  }
+  if (localScore.wind_class === "cross_off") {
+    return "사이드오프 성향입니다. 약하면 괜찮지만 강하면 라인 유지가 어려울 수 있습니다.";
+  }
+  if (localScore.wind_class === "onshore") {
+    return "온쇼어 성향입니다. 5m/s 이상이면 파도가 빨리 무너질 수 있습니다.";
+  }
+  return "바람 방향 메리트는 크지 않습니다. 풍속이 약한지가 더 중요합니다.";
+}
+
+function tideLabel(phase) {
+  const labels = {
+    low: "간조권",
+    low_rising: "간조 이후 밀물",
+    low_mid: "간조-중물",
+    mid_rising: "중물 상승",
+    high_approach: "만조 접근",
+    high_falling: "만조 이후",
+    mid_falling: "중물 하강",
+    unknown: "조위 미상"
+  };
+  return labels[phase] || phase || "조위 미상";
+}
+
+function classifyLocalSwell(frame, spot = {}) {
+  const dir = frame.wave_direction;
+  const height = SurfScoring.waveHeightUsed(frame);
+  if (typeof dir !== "number") return "스웰 정보 없음";
+
+  if (spot.region === "dadaepo") {
+    const grade = SurfScoring.classifyDadaeppongGrade(frame, spot, SurfScoring.classifyWindForSpot(frame.wind_direction_10m, frame.wind_speed_10m, spot));
+    if (grade) return grade;
+    if (SurfScoring.isDirectionBetween(dir, 145, 205)) return "남스웰";
+    if (SurfScoring.isDirectionBetween(dir, 95, 125) && height >= 0.75) return "남동 약스웰";
+    return "다대포 비주류 스웰";
+  }
+
+  if (SurfScoring.isDirectionBetween(dir, 105, 180)) return "송정 정스웰";
+  if (SurfScoring.isDirectionBetween(dir, 85, 105) && height >= 0.8) return "동스웰 체크";
+  if (SurfScoring.isDirectionBetween(dir, 35, 75)) return "NE 차단 스웰";
+  return "송정 비주류 스웰";
+}
+
 function getSuitRecommendation(temp) {
-  if (temp === null || temp === undefined) {
-    return "수온 확인 후 웻슈트를 결정하세요.";
-  }
-  if (temp <= 14) {
-    return "5/4mm 풀슈트 + 부츠 + 글러브";
-  }
-  if (temp <= 18) {
-    return "3/2mm 풀슈트";
-  }
-  if (temp <= 22) {
-    return "스프링슈트 또는 얇은 풀슈트";
-  }
+  if (temp === null || temp === undefined) return "수온 확인 후 웻슈트를 결정하세요.";
+  if (temp <= 14) return "5/4mm 웻슈트 + 부츠 + 글러브";
+  if (temp <= 18) return "3/2mm 웻슈트";
+  if (temp <= 22) return "스프링슈트 또는 얇은 웻슈트";
   return "보드숏 또는 래시가드";
 }
 
-function getWaveHeightScore(height) {
-  if (height === null || height === undefined) return 0;
-  if (height < 0.4) return -26;
-  if (height < 0.7) return -16;
-  if (height < 0.9) return 0;
-  if (height < 1.0) return 10;
-  if (height <= 1.4) return 30;
-  if (height <= 1.8) return 12;
-  return -14;
-}
-
-function getPeriodScore(period) {
-  if (period === null || period === undefined) return 0;
-  if (period >= 9) return 18;
-  if (period >= 7) return 12;
-  if (period >= 6) return 5;
-  return -12;
-}
-
-function getWindScore(windType, windSpeed) {
-  let score = 0;
-
-  if (windType === "오프쇼어") score += 16;
-  if (windType === "온쇼어") score -= 18;
-
-  if (windSpeed === null || windSpeed === undefined) {
-    return score;
-  }
-
-  if (windSpeed <= 3) score += 8;
-  else if (windSpeed <= 6) score += 2;
-  else if (windSpeed <= 9) score -= 8;
-  else score -= 18;
-
-  return score;
-}
-
-function applyRealityCaps(score, frame, windType) {
-  let cappedScore = score;
-
-  if (frame.wave_height !== null && frame.wave_height !== undefined) {
-    if (frame.wave_height < 0.7) cappedScore = Math.min(cappedScore, 49);
-    else if (frame.wave_height < 0.9) cappedScore = Math.min(cappedScore, 62);
-    else if (frame.wave_height < 1.0) cappedScore = Math.min(cappedScore, 73);
-  }
-
-  if (frame.wave_period !== null && frame.wave_period !== undefined && frame.wave_period < 6) {
-    cappedScore = Math.min(cappedScore, 72);
-  }
-
-  if (frame.wave_period !== null && frame.wave_period !== undefined && frame.wave_period < 7) {
-    cappedScore = Math.min(cappedScore, 73);
-  }
-
-  if (windType !== "오프쇼어") {
-    cappedScore = Math.min(cappedScore, 78);
-  }
-
-  if (windType !== "오프쇼어" && frame.wave_period !== null && frame.wave_period < 7) {
-    cappedScore = Math.min(cappedScore, 68);
-  }
-
-  if (windType === "온쇼어" && frame.wind_speed_10m !== null && frame.wind_speed_10m >= 4) {
-    cappedScore = Math.min(cappedScore, 70);
-  }
-
-  return cappedScore;
-}
-
-function scoreHour(frame, beachFacingAngle) {
-  const wind = classifyWind(frame.wind_direction_10m, beachFacingAngle);
-  let score = 44;
-
-  score += getWaveHeightScore(frame.wave_height);
-  score += getPeriodScore(frame.wave_period);
-  score += getWindScore(wind.wind_type, frame.wind_speed_10m);
-  score = applyRealityCaps(score, frame, wind.wind_type);
-
-  return Math.max(0, Math.min(100, Math.round(score)));
-}
-
 function ratingFromScore(score) {
-  if (score >= 74) return "좋음";
-  if (score >= 52) return "보통";
-  return "별로";
+  return SurfScoring.ratingFromScore(score);
+}
+
+function scoreHour(frame, spotOrBeachFacingAngle) {
+  const spot =
+    typeof spotOrBeachFacingAngle === "object"
+      ? spotOrBeachFacingAngle
+      : { id: "custom", region: "songjeong", beachFacingAngle: spotOrBeachFacingAngle || 135 };
+  return SurfScoring.calculateSurfScore(frame, spot).score;
 }
 
 function translateSurfFrame(frame, spot) {
+  const localScore = SurfScoring.calculateSurfScore(frame, spot);
+  const waveHeight = localScore.wave_height_used ?? frame.wave_height;
   const wind = classifyWind(frame.wind_direction_10m, spot.beachFacingAngle);
-  const score = scoreHour(frame, spot.beachFacingAngle);
-  const rating = ratingFromScore(score);
+  const windType = localScore.wind_label || wind.wind_type;
+  const tideType = tideLabel(localScore.tide_phase_advanced);
+  const swellType = classifyLocalSwell(frame, spot);
 
   return {
-    score,
-    rating,
-    wave_height_text: translateWaveHeight(frame.wave_height),
-    wave_period_text: translateWavePeriod(frame.wave_period),
+    score: localScore.score,
+    rating: localScore.rating,
+    wave_height_text: translateWaveHeight(waveHeight, spot),
+    wave_period_text: translateWavePeriod(frame.wave_period, spot),
     water_temperature_text: translateWaterTemperature(frame.sea_surface_temperature),
     suit_recommendation: getSuitRecommendation(frame.sea_surface_temperature),
-    wind_type: wind.wind_type,
-    wind_comment: wind.wind_comment,
-    summary: `${rating}: 파고 ${valueLabel(frame.wave_height, "m")}, 주기 ${valueLabel(frame.wave_period, "초")}, 바람 ${wind.wind_type}`
+    wind_type: windType,
+    wind_comment: windCommentFromScore(localScore),
+    swell_type: swellType,
+    tide_type: tideType,
+    flags: localScore.flags || [],
+    confidence: localScore.confidence,
+    dadaeppong_grade: localScore.dadaeppong_grade,
+    tide_phase_advanced: localScore.tide_phase_advanced,
+    tide_trend: localScore.tide_trend,
+    wave_height_used: waveHeight,
+    wave_source_label: localScore.wave_source_label,
+    current_risk: localScore.current_risk,
+    beginner_warning: localScore.beginner_warning,
+    rain_risk: localScore.rain_risk,
+    local_comment: localScore.local_comment,
+    summary: `${localScore.rating}: 파고 ${valueLabel(waveHeight, "m")}, 주기 ${valueLabel(frame.wave_period, "초")}, ${swellType}, 바람 ${windType}`
   };
 }
 
