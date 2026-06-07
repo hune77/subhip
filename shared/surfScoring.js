@@ -72,10 +72,10 @@
 
     const isDadaepo = type.startsWith("dadaepo");
     const best = isDadaepo
-      ? isDirectionBetween(deg, 320, 30)
+      ? isDirectionBetween(deg, 330, 75)
       : isDirectionBetween(deg, 285, 20);
     const okay = isDadaepo
-      ? isDirectionBetween(deg, 290, 320) || isDirectionBetween(deg, 30, 70)
+      ? isDirectionBetween(deg, 285, 330) || isDirectionBetween(deg, 75, 105)
       : isDirectionBetween(deg, 260, 285) || isDirectionBetween(deg, 20, 45);
     const onshore = isDadaepo
       ? isDirectionBetween(deg, 130, 240)
@@ -142,9 +142,9 @@
   function tideScoreForSpot(phase, spot) {
     const type = classifySpotType(spot);
     const tables = {
-      "dadaepo-mid": { mid_rising: 14, high_approach: 12, low: -12, low_rising: -8 },
-      "dadaepo-morundae": { mid_rising: 12, high_approach: 10, low: -8, low_rising: -5 },
-      "dadaepo-songan": { low_mid: 12, mid_rising: 8, mid_falling: 8, high_approach: -10, high_falling: -8 },
+      "dadaepo-mid": { mid_falling: 16, low_mid: 14, low_rising: 10, low: 6, mid_rising: 4, high_approach: -10, high_falling: -2 },
+      "dadaepo-morundae": { mid_falling: 14, low_mid: 12, low_rising: 8, low: 5, mid_rising: 3, high_approach: -8, high_falling: -2 },
+      "dadaepo-songan": { low_mid: 14, low: 10, low_rising: 10, mid_falling: 8, mid_rising: 4, high_approach: -12, high_falling: -10 },
       "songjeong-surfholic": { mid_rising: 10, high_approach: 8, low_rising: 6 },
       "songjeong-lastwave": { mid_rising: 8, high_approach: 6, low_rising: 4 }
     };
@@ -188,32 +188,69 @@
     const period = frame?.wave_period;
     const dir = normalize360(frame?.wave_direction);
     const phase = frame?.tide_phase_advanced;
-    const weakWind =
-      isCleanWind(frame?.wind_speed_10m) ||
-      isOkayWind(frame?.wind_speed_10m) ||
-      windInfo?.wind_class === "offshore" ||
-      windInfo?.wind_class === "cross_off";
+    const windSpeed = frame?.wind_speed_10m;
+    const weakWind = isCleanWind(windSpeed) || isOkayWind(windSpeed);
+    const offshoreWind = windInfo?.wind_class === "offshore" || windInfo?.wind_class === "cross_off";
+    const cleanOffshore = (weakWind && offshoreWind) || (isCleanWind(windSpeed) && windInfo?.wind_class !== "onshore");
+    const badWind = windInfo?.wind_class === "onshore" && typeof windSpeed === "number" && windSpeed >= 5;
     const sourceLift =
       (typeof frame?.jma_wave?.height_m === "number" && frame.jma_wave.height_m >= 0.9) ||
       (typeof frame?.wave_height === "number" && frame.wave_height >= 0.9);
 
-    if (dir === null || typeof height !== "number") return null;
-    if (isDirectionBetween(dir, 155, 205) && height >= 0.8 && period >= 8 && weakWind && (phase === "mid_rising" || phase === "high_approach")) {
+    if (dir === null || typeof height !== "number" || typeof period !== "number") return null;
+
+    const optimalSwell = isDirectionBetween(dir, 200, 250);
+    const goodSwell = isDirectionBetween(dir, 170, 260);
+    const southSwell = isDirectionBetween(dir, 165, 205);
+    const weakSouthEast = isDirectionBetween(dir, 125, 165);
+    const eastBlocked = isDirectionBetween(dir, 55, 115);
+    const primeTide = ["mid_falling", "low_mid", "low_rising", "low"].includes(phase);
+    const okayTide = primeTide || phase === "mid_rising";
+    const highTide = phase === "high_approach" || phase === "high_falling";
+    const heightWindow = height >= 0.8 && height <= 1.8;
+    const funHeight = height >= 1.0 && height <= 1.8;
+
+    if (height < 0.5 || period < 5 || (eastBlocked && height < 1.2)) return "비추천";
+
+    const coreHits = [heightWindow, goodSwell, period >= 9, cleanOffshore, primeTide].filter(Boolean).length;
+    if (
+      heightWindow &&
+      (optimalSwell || (goodSwell && period >= 11)) &&
+      period >= 10 &&
+      cleanOffshore &&
+      primeTide &&
+      coreHits >= 4
+    ) {
       return "다대뽕";
     }
-    if (isDirectionBetween(dir, 125, 235) && height >= 0.9 && period >= 7) {
+
+    if ((optimalSwell || southSwell) && funHeight && period >= 8 && (cleanOffshore || weakWind) && okayTide && !badWind) {
       return "남스웰 양호";
     }
-    if (isDirectionBetween(dir, 95, 125) && height >= 0.75 && period >= 7 && weakWind) {
+
+    if ((goodSwell || weakSouthEast) && height >= 0.75 && period >= 7 && (weakWind || offshoreWind) && okayTide && !badWind) {
       return "약다대뽕";
     }
-    if (isDirectionBetween(dir, 70, 95) && height >= 0.9 && (period >= 7 || sourceLift)) {
+
+    // 6/2처럼 주기가 짧아도 사이즈, 약풍, 물때가 맞으면 약한 다대포 체감이 나올 수 있어
+    // 완전 비추천으로 버리지 않고 낮은 상한의 약다대뽕 후보로 남긴다.
+    if ((goodSwell || weakSouthEast) && height >= 0.8 && height <= 1.1 && period >= 5 && weakWind && okayTide && !highTide) {
+      return "약다대뽕";
+    }
+
+    if ((weakSouthEast || eastBlocked) && height >= 0.85 && (period >= 7 || sourceLift) && !badWind) {
       return "애매하지만 체크";
     }
-    if (isDirectionBetween(dir, 95, 205) && height >= 0.8 && period >= 4 && weakWind && (phase === "mid_rising" || phase === "high_approach")) {
+
+    if (height >= 0.7 && period >= 7 && weakWind && okayTide && !badWind) {
+      return "탈만함";
+    }
+
+    if ((goodSwell || weakSouthEast) && height >= 0.8 && period >= 5.5 && weakWind && !highTide) {
       return "애매하지만 체크";
     }
-    if (height < 0.5 || period < 6) return "비추천";
+    if (period < 6 || badWind) return "비추천";
+    if (highTide) return null;
     return null;
   }
 
@@ -343,34 +380,59 @@ function applySongjeongCaps(score, frame, flags) {
     let score = 26;
 
     const target = {
-      "dadaepo-morundae": [0.4, 1.1],
-      "dadaepo-mid": [0.5, 1.2],
-      "dadaepo-songan": [0.5, 1.2]
-    }[type] || [0.5, 1.2];
+      "dadaepo-morundae": [0.6, 1.4],
+      "dadaepo-mid": [0.7, 1.8],
+      "dadaepo-songan": [0.8, 1.8]
+    }[type] || [0.7, 1.8];
 
-    if (height >= target[0] && height <= target[1]) score += 22;
-    else if (height > target[1] && height < 1.8) score += 12;
-    else score -= 8;
+    if (height >= 1.0 && height <= target[1]) score += 24;
+    else if (height >= target[0] && height <= target[1]) score += 16;
+    else if (height > target[1] && height < 2.0) score += 10;
+    else score -= 10;
 
-    if (isDirectionBetween(dir, 145, 205)) score += 22;
-    else if (isDirectionBetween(dir, 125, 235)) score += 12;
-    else if (isDirectionBetween(dir, 95, 125) && height >= 0.75) score += 8;
+    if (isDirectionBetween(dir, 200, 250)) score += 28;
+    else if (isDirectionBetween(dir, 170, 260)) score += 20;
+    else if (isDirectionBetween(dir, 125, 170) && height >= 0.8) score += 6;
+    else if (isDirectionBetween(dir, 55, 115)) score -= 22;
     else score -= 12;
 
-    if (period >= 8 && period <= 13) score += 18;
-    else if (period >= 7) score += 10;
-    else if (period >= 6) score += 2;
-    else score -= 10;
+    if (period >= 11) score += 30;
+    else if (period >= 10) score += 26;
+    else if (period >= 9) score += 22;
+    else if (period >= 8) score += 15;
+    else if (period >= 7) score += 8;
+    else if (period >= 6) score -= 2;
+    else score -= 14;
 
     score += windInfo.score_delta;
     score += tideScoreForSpot(frame?.tide_phase_advanced, spot);
 
     const grade = classifyDadaeppongGrade(frame, spot, windInfo);
-    if (grade === "다대뽕") score = Math.min(Math.max(score, 78), 92);
-    if (grade === "남스웰 양호") score = Math.min(Math.max(score, 72), 84);
-    if (grade === "약다대뽕") score = Math.min(Math.max(score, 70), 78);
-    if (grade === "애매하지만 체크") score = Math.min(Math.max(score, 64), 70);
+    if (grade === "다대뽕") score = Math.min(Math.max(score, 82), 94);
+    if (grade === "남스웰 양호") score = Math.min(Math.max(score, 74), 86);
+    if (grade === "약다대뽕") {
+      const weakCap = period < 6 ? 66 : period < 7 ? 70 : period < 8 ? 74 : 80;
+      score = Math.min(Math.max(score, period < 6 ? 64 : 66), weakCap);
+    }
+    if (grade === "탈만함") score = Math.min(Math.max(score, 56), 68);
+    if (grade === "애매하지만 체크") score = Math.min(Math.max(score, 52), 64);
     if (grade === "비추천") score = Math.min(score, 45);
+
+    if (isDirectionBetween(dir, 55, 115)) {
+      score = Math.min(score, height >= 1.2 && period >= 8 ? 58 : 48);
+      flags.push("동해 계열 스웰은 다대포에서 힘이 죽을 수 있음");
+    }
+    if (period < 6 && grade !== "약다대뽕") {
+      score = Math.min(score, 52);
+      flags.push("다대포는 주기 6초 미만이면 겉보기보다 힘이 약할 수 있음");
+    } else if (period < 8) {
+      score = Math.min(score, grade === "약다대뽕" ? 72 : 68);
+      flags.push("다대포는 주기 8초 미만이면 다대뽕 상한을 낮게 봄");
+    }
+    if (frame?.tide_phase_advanced === "high_approach" || frame?.tide_phase_advanced === "high_falling") {
+      score = Math.min(score, 68);
+      flags.push("다대포는 만조 부근에서 힘이 풀릴 수 있음");
+    }
 
     const rain = applyRainAfterRisk(score, frame, frame?.recent_6h_precipitation, flags);
     const caps = applyDadaepoCaps(rain.score, frame, spot, flags);
@@ -395,9 +457,9 @@ function applySongjeongCaps(score, frame, flags) {
       return "송안은 점수가 좋아도 조류, 라인업 거리, 체력 확인이 먼저입니다.";
     }
     if (type.startsWith("dadaepo")) {
-      return result.dadaeppong_grade
+      return result.dadaeppong_grade === "다대뽕" || result.dadaeppong_grade === "약다대뽕"
         ? `다대포 ${result.dadaeppong_grade} 예보입니다. 파고만 보지 말고 조위와 비 직후 하구 리스크를 같이 보세요.`
-        : "다대포는 파고보다 남스웰 방향, 조위, 바람, 비 이후 리버마우스 리스크를 함께 봅니다.";
+        : "다대포는 파고보다 주기, SW~SSW 스웰, 썰물 타이밍, 북풍 계열 약풍을 함께 봅니다.";
     }
     return "송정은 장주기와 사이즈가 함께 커지면 덤프 가능성을 같이 봅니다.";
   }

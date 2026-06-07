@@ -39,9 +39,9 @@ const SPOTS = [
     longitude: 128.9647,
     beachFacingAngle: 180,
     idealSwellFrom: 180,
-    tidePreference: "mid-high",
+    tidePreference: "low-mid",
     beginnerRiskHeight: 1.6,
-    note: "세 포인트 중 비교적 작게 들어오는 좌측 포인트. 남스웰과 중물 이후를 좋게 봅니다.",
+    note: "세 포인트 중 비교적 작게 들어오는 좌측 포인트. SW~SSW 스웰과 중썰물~간조 전후를 우선합니다.",
     mapImage: "./assets/dadaepo-points.jpg"
   },
   {
@@ -54,9 +54,9 @@ const SPOTS = [
     longitude: 128.9687,
     beachFacingAngle: 180,
     idealSwellFrom: 180,
-    tidePreference: "mid-high",
+    tidePreference: "low-mid",
     beginnerRiskHeight: 1.6,
-    note: "다대포 메인 체크 포인트. 남스웰, 약한 북서풍, 중물 상승에서 만조 접근 구간을 가장 강하게 봅니다.",
+    note: "다대포 메인 체크 포인트. SW~SSW 스웰, 8초 이상 주기, 북풍 계열 약풍, 중썰물~간조 전후를 강하게 봅니다.",
     mapImage: "./assets/dadaepo-points.jpg"
   },
   {

@@ -22,8 +22,8 @@ function translateWaveHeight(height, spot = {}) {
   }
 
   if (height < 0.5) return "다대포 기준으로 작습니다. 스팟과 물때가 받쳐줘야 합니다.";
-  if (height < 0.8) return "다대포에서는 애매하지만 남동~남스웰과 약한 바람이면 체크할 만합니다.";
-  if (height < 1.4) return "다대포 기준 좋은 사이즈입니다. 남스웰과 물때가 맞으면 기대할 수 있습니다.";
+  if (height < 0.8) return "다대포에서는 애매하지만 주기, 스웰 방향, 물때가 받쳐주면 체크할 만합니다.";
+  if (height < 1.4) return "다대포 기준 체크할 만한 사이즈입니다. 주기와 썰물 타이밍이 맞으면 기대할 수 있습니다.";
   if (height < 1.8) return "다대포에서 힘 있는 사이즈입니다. 조류와 라인업 거리를 확인하세요.";
   return "다대포 기준 강한 사이즈입니다. 조류, 유속, 초중급 안전 리스크를 먼저 봐야 합니다.";
 }
@@ -50,9 +50,11 @@ function translateWavePeriod(period, spot = {}) {
     return "주기가 짧아 파도가 급하고 힘이 약할 수 있습니다.";
   }
 
-  if (period >= 8) return "다대포에서 다대뽕을 기대할 수 있는 주기권입니다.";
-  if (period >= 7) return "다대포 약다대뽕 체크가 가능한 최소 주기권입니다.";
-  if (period >= 6) return "다대포 기준 최소권입니다. 다른 조건이 좋아야 합니다.";
+  if (period >= 11) return "다대포 기준 다대뽕 후보 주기입니다. SW~SSW 스웰과 썰물 타이밍이면 강하게 봅니다.";
+  if (period >= 9) return "다대포에서 재밌어질 수 있는 주기입니다. 파고보다 이 주기를 더 중요하게 봅니다.";
+  if (period >= 8) return "다대포 기준 괜찮은 주기입니다. 남스웰과 북풍이면 체크 가치가 있습니다.";
+  if (period >= 7) return "다대포 기준 탈만한 최소권 주기입니다. 다른 조건이 좋아야 합니다.";
+  if (period >= 6) return "다대포 기준 힘이 약할 수 있습니다. 사이즈가 보여도 뻥파도일 수 있습니다.";
   return "주기가 짧아 다대포에서도 힘이 부족할 수 있습니다.";
 }
 
@@ -122,8 +124,10 @@ function classifyLocalSwell(frame, spot = {}) {
   if (spot.region === "dadaepo") {
     const grade = SurfScoring.classifyDadaeppongGrade(frame, spot, SurfScoring.classifyWindForSpot(frame.wind_direction_10m, frame.wind_speed_10m, spot));
     if (grade) return grade;
-    if (SurfScoring.isDirectionBetween(dir, 145, 205)) return "남스웰";
-    if (SurfScoring.isDirectionBetween(dir, 95, 125) && height >= 0.75) return "남동 약스웰";
+    if (SurfScoring.isDirectionBetween(dir, 200, 250)) return "SW~SSW 다대뽕 스웰";
+    if (SurfScoring.isDirectionBetween(dir, 165, 200) || SurfScoring.isDirectionBetween(dir, 250, 260)) return "남스웰";
+    if (SurfScoring.isDirectionBetween(dir, 125, 165) && height >= 0.75) return "남동 약스웰";
+    if (SurfScoring.isDirectionBetween(dir, 55, 115)) return "동해 계열 역스웰";
     return "다대포 비주류 스웰";
   }
 

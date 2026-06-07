@@ -47,9 +47,9 @@ const SPOTS = [
     longitude: 128.9647,
     beachFacingAngle: 180,
     idealSwellFrom: 180,
-    tidePreference: "mid-high",
+    tidePreference: "low-mid",
     beginnerRiskHeight: 1.6,
-    note: "Left breaking 성향. 다대포 세 포인트 중 파도가 비교적 작게 들어오는 편으로 봅니다.",
+    note: "Left breaking 성향. 세 포인트 중 비교적 작게 들어오며, SW~SSW 스웰과 중썰물~간조 전후를 우선합니다.",
     mapImage: "./assets/dadaepo-points.jpg"
   },
   {
@@ -62,9 +62,9 @@ const SPOTS = [
     longitude: 128.9687,
     beachFacingAngle: 180,
     idealSwellFrom: 180,
-    tidePreference: "mid-high",
+    tidePreference: "low-mid",
     beginnerRiskHeight: 1.6,
-    note: "가장 많은 서퍼가 타는 구간. 간조에는 빠르게 닫히고, 중물~만조에 롱보드 컨디션이 좋아지는 쪽으로 봅니다.",
+    note: "가장 많은 서퍼가 타는 구간. SW~SSW 스웰, 8초 이상 주기, 북풍 계열 약풍, 중썰물~간조 전후를 강하게 봅니다.",
     mapImage: "./assets/dadaepo-points.jpg"
   },
   {
@@ -436,7 +436,7 @@ function beginnerWindText(frame) {
 
 function beginnerSwellText(frame, spot) {
   if (spot.region === "dadaepo") {
-    return "스웰은 먼바다에서 들어오는 파도 방향. 다대포는 남쪽 계열이면 파도가 잘 살아납니다.";
+    return "스웰은 먼바다에서 들어오는 파도 방향. 다대포는 SW~SSW가 베스트, 남스웰은 가능, 동해 계열은 힘이 죽기 쉽습니다.";
   }
   return "스웰은 먼바다에서 들어오는 파도 방향. 송정은 남동~남쪽 계열이면 해변으로 잘 들어옵니다.";
 }
@@ -483,49 +483,59 @@ function classifySwell(frame, spot) {
   const waveHeight = scoreWaveHeight(frame);
 
   if (spot.region === "dadaepo") {
-    const southDiff = angularDistance(frame.wave_direction, 180);
-    const seDiff = angularDistance(frame.wave_direction, 115);
+    const height = scoreWaveHeight(frame);
 
-    if (southDiff <= 55) {
+    if (isDirectionBetween(frame.wave_direction, 200, 250)) {
+      return {
+        type: "SW~SSW 다대뽕 스웰",
+        passed: true,
+        diff: angularDistance(frame.wave_direction, 225),
+        dadaeppong: true,
+        weakDadaeppong: false,
+        comment: "다대포 로컬들이 가장 좋아하는 남서~남남서 계열입니다. 주기와 물때가 맞으면 벽이 서는 후보입니다."
+      };
+    }
+
+    if (isDirectionBetween(frame.wave_direction, 165, 200) || isDirectionBetween(frame.wave_direction, 250, 260)) {
       return {
         type: "남스웰",
         passed: true,
-        diff: southDiff,
+        diff: Math.min(angularDistance(frame.wave_direction, 180), angularDistance(frame.wave_direction, 245)),
         dadaeppong: true,
         weakDadaeppong: false,
-        comment: "다대포가 가장 잘 받는 남스웰 계열입니다."
+        comment: "남쪽 계열이라 다대포에서 가능성은 있습니다. SW보다 약하게 보고 주기와 물때를 같이 확인합니다."
       };
     }
 
-    if (seDiff <= 50 && waveHeight >= 0.75) {
+    if (isDirectionBetween(frame.wave_direction, 125, 165) && height >= 0.75) {
       return {
-        type: "약다대뽕 스웰",
+        type: "남동 약스웰",
         passed: true,
-        diff: seDiff,
-        dadaeppong: true,
-        weakDadaeppong: true,
-        comment: "6월 2일 실제 체감처럼, 남스웰은 아니지만 다대포에서 약하게 살아날 수 있는 남동~동남 계열입니다."
-      };
-    }
-
-    if (seDiff <= 70 && waveHeight >= 0.9) {
-      return {
-        type: "애매한 다대포 스웰",
-        passed: true,
-        diff: seDiff,
+        diff: angularDistance(frame.wave_direction, 145),
         dadaeppong: false,
         weakDadaeppong: true,
-        comment: "방향은 완벽하지 않지만 사이즈가 받쳐주면 다대포에서 반응할 수 있습니다."
+        comment: "정석 다대뽕 방향은 아니지만, 사이즈·약풍·썰물 타이밍이 맞으면 약다대뽕 후보로 남깁니다."
+      };
+    }
+
+    if (isDirectionBetween(frame.wave_direction, 55, 115)) {
+      return {
+        type: "동해 계열 역스웰",
+        passed: false,
+        diff: angularDistance(frame.wave_direction, 90),
+        dadaeppong: false,
+        weakDadaeppong: false,
+        comment: "E~ENE 계열은 다대포에서 각도가 맞지 않아 차트보다 힘이 죽을 가능성이 큽니다."
       };
     }
 
     return {
-      type: "역스웰",
+      type: "다대포 비주류 스웰",
       passed: false,
-      diff: Math.min(southDiff, seDiff),
+      diff: angularDistance(frame.wave_direction, 225),
       dadaeppong: false,
       weakDadaeppong: false,
-      comment: "다대포 기준으로는 체감 파도가 약하게 들어올 가능성이 큽니다."
+      comment: "다대포 기준 정석 각도는 아닙니다. 파고가 보여도 주기와 현장 체감을 보수적으로 봅니다."
     };
   }
 
@@ -602,6 +612,19 @@ function classifyTide(frame, spot) {
     };
   }
 
+  if (spot.region === "dadaepo") {
+    const phase = frame.tide_phase_advanced || "unknown";
+    const prime = ["mid_falling", "low_mid", "low_rising", "low"].includes(phase);
+    const okay = prime || phase === "mid_rising";
+    return {
+      type: tidePhaseLabel(phase),
+      passed: okay,
+      comment: prime
+        ? "다대포 로컬 기준 중썰물~간조 전후로 sand bar가 드러나며 브레이크가 선명해질 수 있습니다."
+        : "다대포는 만조 부근보다 미들~로우/썰물 흐름을 더 우선해서 봅니다."
+    };
+  }
+
   const tide = frame.tide_phase || "unknown";
   if (spot.tidePreference === "low-mid") {
     const passed = tide === "low" || tide === "mid";
@@ -639,8 +662,8 @@ function translateWaveHeight(height, spot) {
   }
 
   if (height < 0.7) return "다대포 기준 작습니다. 포인트와 타이드가 받쳐줘야 합니다.";
-  if (height < 1.0) return "다대포 기준 애매하지만 남스웰과 약한 바람이면 롱보드 가능성이 있습니다.";
-  if (height < 1.8) return "다대포 기준 좋은 사이즈입니다. 남스웰, 6m/s 이하 바람이면 우선 확인할 만합니다.";
+  if (height < 1.0) return "다대포 기준 애매한 사이즈입니다. 주기, 스웰 방향, 썰물 타이밍이 받쳐줘야 롱보드 가능성이 있습니다.";
+  if (height < 1.8) return "다대포 기준 체크할 만한 사이즈입니다. 주기와 썰물 타이밍이 맞으면 기대할 수 있습니다.";
   return "다대포 기준 큽니다. 조류와 라인업 거리까지 고려해야 합니다.";
 }
 
@@ -654,9 +677,12 @@ function translateWavePeriod(period, spot) {
     return "주기가 짧아 힘이 약할 수 있습니다.";
   }
 
-  if (period >= 7) return "다대포 기준 통과 주기입니다. 사이즈와 남스웰이면 좋은 후보입니다.";
-  if (period >= 6) return "다대포 기준 최소권입니다. 다른 조건이 좋아야 합니다.";
-  return "다대포 기준 주기가 짧습니다.";
+  if (period >= 11) return "다대포 기준 다대뽕 후보 주기입니다. SW~SSW 스웰과 썰물 타이밍이면 강하게 봅니다.";
+  if (period >= 9) return "다대포에서 재밌어질 수 있는 주기입니다. 파고보다 이 주기를 더 중요하게 봅니다.";
+  if (period >= 8) return "다대포 기준 괜찮은 주기입니다. 남스웰과 북풍이면 체크 가치가 있습니다.";
+  if (period >= 7) return "다대포 기준 탈만한 최소권 주기입니다. 다른 조건이 좋아야 합니다.";
+  if (period >= 6) return "다대포 기준 힘이 약할 수 있습니다. 사이즈가 보여도 뻥파도일 수 있습니다.";
+  return "다대포 기준 주기가 짧아 힘이 부족할 가능성이 큽니다.";
 }
 
 function getSuitRecommendation(temp) {
@@ -869,8 +895,8 @@ function conditionChecks(item) {
   const swell = classifySwell(item, spot);
   const tide = classifyTide(item, spot);
   const waveHeight = item.translated?.wave_height_used ?? scoreWaveHeight(item);
-  const wavePass = spot.region === "songjeong" ? waveHeight >= 0.5 : waveHeight >= 1.0;
-  const periodPass = spot.region === "songjeong" ? item.wave_period >= 6 : item.wave_period >= 6.5;
+  const wavePass = spot.region === "songjeong" ? waveHeight >= 0.5 : waveHeight >= 0.8;
+  const periodPass = spot.region === "songjeong" ? item.wave_period >= 6 : item.wave_period >= 8;
   const windPass = spot.region === "songjeong"
     ? (item.wind_speed_10m ?? 99) * 3.6 <= 5 || isSongjeongOffshoreWind(item.wind_direction_10m)
     : item.wind_speed_10m <= 5 || (item.translated.wind_type === "오프쇼어" && item.wind_speed_10m <= 7);
@@ -886,7 +912,7 @@ function conditionChecks(item) {
 
   if (spot.region === "dadaepo") {
     checks.push({ key: "rain", label: "비", passed: rainPass, value: `${item.precipitation ?? 0}mm` });
-    if (item.translated?.dadaeppong_grade) {
+    if (item.translated?.dadaeppong_grade === "다대뽕" || item.translated?.dadaeppong_grade === "약다대뽕") {
       checks.push({ key: "grade", label: "등급", passed: item.translated.dadaeppong_grade !== "비추천", value: item.translated.dadaeppong_grade });
     }
   }
@@ -901,8 +927,11 @@ function formatBestWindow(item) {
 
 function buildVerdict(best) {
   if (!best) return "데이터 대기 중";
-  if (best.translated.swell_type === "약다대뽕 스웰" && best.translated.rating !== "별로") {
-    return "크기는 크지 않아도 다대포가 반응할 수 있는 약다대뽕 후보입니다. 현장 체감 확인 가치가 있습니다.";
+  if (best.translated?.dadaeppong_grade === "다대뽕") {
+    return "다대뽕 조건이 겹친 시간입니다. SW~SSW 계열, 긴 주기, 약한 북풍, 썰물 타이밍이면 다대포 메인 체크 우선입니다.";
+  }
+  if (best.translated?.dadaeppong_grade === "약다대뽕") {
+    return "완전 다대뽕은 아니지만 다대포가 반응할 수 있는 약다대뽕 후보입니다. 현장 체감 확인 가치가 있습니다.";
   }
   if (best.translated.rating === "좋음") {
     return "한국 기준으로 체크할 만한 시간입니다. 파고, 스웰 방향, 바람 중 핵심 조건이 맞습니다.";
@@ -911,6 +940,31 @@ function buildVerdict(best) {
     return "완벽하진 않지만 들어갈 명분은 있습니다. 보드 선택과 현장 확인이 중요합니다.";
   }
   return "기대치를 낮추는 구간입니다. 바람, 방향, 타이드 중 한두 조건이 크게 맞지 않습니다.";
+}
+
+function todayImpactSignal(best, spot) {
+  if (spot?.region !== "dadaepo") return null;
+  const grade = best?.translated?.dadaeppong_grade;
+
+  if (grade === "다대뽕") {
+    return {
+      className: "is-dadaeppong",
+      title: "다대뽕 ON",
+      label: "다대뽕",
+      copy: "오늘 다대 찍을 명분이 있습니다. 주기와 물때가 받쳐주는 시간대라 미드/송안은 안전거리까지 같이 체크하세요."
+    };
+  }
+
+  if (grade === "약다대뽕") {
+    return {
+      className: "is-weak-dadaeppong",
+      title: "약다대뽕 CHECK",
+      label: "약다대뽕",
+      copy: "사이즈나 주기 중 하나는 아쉽지만 다대포가 반응할 수 있는 하한 조건입니다. 롱보드·미드렝스로 현장 확인 가치가 있습니다."
+    };
+  }
+
+  return null;
 }
 
 function renderStatus() {
@@ -1013,15 +1067,18 @@ function renderTodayCard() {
   const gear = gearRecommendation(best);
   const board = boardRecommendation(best, spot);
   const sourceLabel = best.translated.wave_source_label || waveSourceText(best);
-  const heroTitle =
-    best.translated.rating === "좋음"
+  const impact = todayImpactSignal(best, spot);
+  const heroTitle = impact?.title ||
+    (best.translated.rating === "좋음"
       ? `${best.hour} GO`
       : best.translated.rating === "보통"
         ? `${best.hour} CHECK`
-        : `${best.hour} SKIP`;
+        : `${best.hour} SKIP`);
+  const pillLabel = impact ? `${impact.label} ${best.translated.score}` : `${best.translated.rating} ${best.translated.score}`;
+  const heroCopy = impact?.copy || best.translated.wave_height_text;
 
   elements.todayCard.innerHTML = `
-    <div class="hero-content">
+    <div class="hero-content ${impact?.className || ""}">
       <div class="hero-topline">
         <span>${spot.full_name}</span>
         <span>FACING ${spot.beach_facing_angle}°</span>
@@ -1033,10 +1090,10 @@ function renderTodayCard() {
         </div>
         <span class="rating-pill ${pillClass}">
           <i class="ph ${trendIcon(best.translated.rating)}"></i>
-          ${best.translated.rating} ${best.translated.score}
+          ${pillLabel}
         </span>
       </div>
-      <p class="hero-copy">${best.translated.wave_height_text}</p>
+      <p class="hero-copy">${heroCopy}</p>
       <p class="hero-signal"><span>SUBHIP SIGNAL</span>${buildVerdict(best)}</p>
       <p class="hero-beginner">${todayBeginnerSummary(best, spot)}</p>
       <div class="metric-row">
@@ -1068,7 +1125,7 @@ function renderCriteriaCard() {
   const criteriaText =
     spot.region === "songjeong"
       ? "송정: S~SE 스웰 최우선, E 스웰은 사이즈가 있을 때만. 8초 이상 주기와 W/NW 오프쇼어를 가산하고, NE 스웰과 S/SW 온쇼어는 감점."
-      : "다대포: 남스웰 + 1.0m 전후 이상 + 주기 6.5~9초 + 6m/s 이하 바람 + 포인트별 타이드 선호를 우선.";
+      : "다대포: 파고보다 주기 우선. SW~SSW 스웰, 9초 이상 주기, N/NNE/NE 약풍, 중썰물~간조 전후를 강하게 봅니다.";
 
   elements.criteriaCard.innerHTML = `
     <div class="criteria-head">
@@ -1182,7 +1239,9 @@ function renderDetails() {
   const flags = best.translated.flags || [];
   const localNotes = [
     best.translated.local_comment,
-    best.translated.dadaeppong_grade ? `다대뽕 등급: ${best.translated.dadaeppong_grade}` : null,
+    best.translated.dadaeppong_grade === "다대뽕" || best.translated.dadaeppong_grade === "약다대뽕"
+      ? `다대포 시그널: ${best.translated.dadaeppong_grade}`
+      : null,
     best.translated.confidence ? `예보 신뢰도: ${best.translated.confidence}` : null,
     best.translated.wave_source_label ? `파고 소스: ${best.translated.wave_source_label}` : null,
     flags.length ? `주의: ${flags.join(" / ")}` : null

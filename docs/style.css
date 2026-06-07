@@ -314,6 +314,27 @@ h1 {
   letter-spacing: 0;
 }
 
+.hero-content.is-dadaeppong h2 {
+  color: var(--mint);
+  text-shadow: 0 0 22px rgba(54, 255, 202, 0.22);
+}
+
+.hero-content.is-weak-dadaeppong h2 {
+  color: var(--yellow);
+}
+
+.hero-content.is-dadaeppong .rating-pill {
+  border-color: rgba(54, 255, 202, 0.55);
+  background: rgba(54, 255, 202, 0.08);
+  color: var(--mint);
+}
+
+.hero-content.is-weak-dadaeppong .rating-pill {
+  border-color: rgba(242, 201, 76, 0.55);
+  background: rgba(242, 201, 76, 0.08);
+  color: var(--yellow);
+}
+
 .hero-copy {
   margin-bottom: 0;
   max-width: 560px;
