@@ -4,6 +4,11 @@ import { PNG } from "pngjs";
 
 const SOURCE_URL = "https://gga.kr/pds/w_.php";
 const ROOT = process.cwd();
+// GitHub-hosted runners can occasionally take longer to connect to IMOC.
+// Keep the timeout generous and retry transient undici/network failures.
+const FETCH_TIMEOUT_MS = 30_000;
+const FETCH_RETRIES = 3;
+const RETRY_DELAY_MS = 1_000;
 const OUTPUTS = [
   path.join(ROOT, "client", "data", "jma-wave.json"),
   path.join(ROOT, "docs", "data", "jma-wave.json")
@@ -96,18 +101,155 @@ function sampleSpot(png, point) {
   };
 }
 
+function wait(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function errorChain(error) {
+  const parts = [];
+  let current = error;
+
+  for (let depth = 0; current && depth < 4; depth += 1) {
+    const code = current.code ? ` ${current.code}` : "";
+    const message = current.message || String(current);
+    const address = current.hostname
+      ? ` address=${current.hostname}${current.port ? `:${current.port}` : ""}`
+      : "";
+    parts.push(`${current.name || "Error"}${code}: ${message}${address}`);
+    current = current.cause;
+  }
+
+  return parts.join(" <- ");
+}
+
+function isTimeoutError(error) {
+  const text = errorChain(error).toLowerCase();
+  return text.includes("timeout") || text.includes("timed out") || text.includes("abort");
+}
+
+async function fetchWithRetry(url, label, readBody) {
+  const totalAttempts = FETCH_RETRIES + 1;
+
+  for (let attempt = 1; attempt <= totalAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      controller.abort(new Error(`Fetch timeout after ${FETCH_TIMEOUT_MS}ms`));
+    }, FETCH_TIMEOUT_MS);
+
+    try {
+      console.log(`[jma] Fetch ${label} attempt ${attempt}/${totalAttempts}: ${url}`);
+      const response = await fetch(url, { signal: controller.signal });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      }
+
+      return await readBody(response);
+    } catch (error) {
+      const timeoutText = isTimeoutError(error) ? "yes" : "no";
+      const hasRetry = attempt < totalAttempts;
+      console.warn(
+        `[jma] Fetch failed url=${url} attempt=${attempt}/${totalAttempts} timeout=${timeoutText} retry=${hasRetry ? "yes" : "no"} error=${errorChain(error)}`
+      );
+
+      if (!hasRetry) {
+        const finalError = new Error(`Failed to fetch ${label} after ${totalAttempts} attempts: ${url}`);
+        finalError.cause = error;
+        finalError.url = url;
+        throw finalError;
+      }
+
+      await wait(RETRY_DELAY_MS * attempt);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw new Error(`Unexpected retry loop exit for ${url}`);
+}
+
+async function fetchText(url) {
+  return fetchWithRetry(url, "source html", (response) => response.text());
+}
+
 async function fetchPng(url) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
-  const buffer = Buffer.from(await response.arrayBuffer());
+  const arrayBuffer = await fetchWithRetry(url, "wave png", (response) => response.arrayBuffer());
+  const buffer = Buffer.from(arrayBuffer);
   return PNG.sync.read(buffer);
 }
 
-async function main() {
-  const sourceResponse = await fetch(SOURCE_URL);
-  if (!sourceResponse.ok) throw new Error(`Failed to fetch ${SOURCE_URL}: ${sourceResponse.status}`);
+function readExistingWaveJson() {
+  for (const output of OUTPUTS) {
+    if (!fs.existsSync(output)) continue;
 
-  const html = await sourceResponse.text();
+    try {
+      const raw = fs.readFileSync(output, "utf8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.forecastHours)) {
+        return {
+          output,
+          raw,
+          updatedAt: parsed.updatedAt || null,
+          frameCount: parsed.forecastHours.length
+        };
+      }
+    } catch (error) {
+      console.warn(`[jma] Existing JSON is unreadable path=${output} error=${errorChain(error)}`);
+    }
+  }
+
+  return null;
+}
+
+function writeEmptyFallback(error) {
+  const payload = {
+    updatedAt: null,
+    sourcePage: SOURCE_URL,
+    method: "IMOC/JMA wave map color sampling near Busan coast. Values are coarse wave-height bands, not buoy readings.",
+    fallback: true,
+    fallbackReason: errorChain(error),
+    forecastHours: []
+  };
+
+  for (const output of OUTPUTS) {
+    fs.mkdirSync(path.dirname(output), { recursive: true });
+    fs.writeFileSync(output, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  }
+
+  console.warn(`[jma] No previous JSON was available; wrote empty fallback to ${OUTPUTS.join(", ")}`);
+}
+
+function keepExistingWaveJson(error) {
+  console.warn(`[jma] JMA update failed, keeping previous wave JSON. error=${errorChain(error)}`);
+  const existing = readExistingWaveJson();
+
+  if (!existing) {
+    writeEmptyFallback(error);
+    return;
+  }
+
+  // Graceful degradation: a flaky external forecast server should not fail
+  // the GitHub Action or remove the last known usable wave data.
+  for (const output of OUTPUTS) {
+    if (fs.existsSync(output)) {
+      console.warn(`[jma] Keeping existing output: ${output}`);
+      continue;
+    }
+
+    fs.mkdirSync(path.dirname(output), { recursive: true });
+    fs.writeFileSync(output, existing.raw, "utf8");
+    console.warn(`[jma] Restored missing output from existing JSON: ${output}`);
+  }
+
+  console.warn(
+    `[jma] Fallback source=${existing.output} frames=${existing.frameCount} updatedAt=${existing.updatedAt || "unknown"}`
+  );
+}
+
+async function main() {
+  const html = await fetchText(SOURCE_URL);
   const forecasts = parseForecasts(html);
   if (!forecasts.length) throw new Error("No JMA forecast images found");
 
@@ -142,6 +284,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
+  keepExistingWaveJson(error);
+  console.warn("[jma] Graceful fallback complete; workflow will continue without failing.");
 });
