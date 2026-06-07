@@ -154,12 +154,18 @@
   function calculateForecastConfidence(frame) {
     const jmaHeight = frame?.jma_wave?.available ? frame.jma_wave.height_m : null;
     const openMeteoHeight = frame?.wave_height;
+    const ignored = Boolean(frame?.jma_wave?.ignored);
     const flags = [];
     let confidence = "normal";
     let scoreCap = null;
     let waveSourceLabel = "Open-Meteo 단독";
 
-    if (typeof jmaHeight === "number" && typeof openMeteoHeight === "number") {
+    if (ignored && typeof jmaHeight === "number" && typeof openMeteoHeight === "number") {
+      confidence = "low";
+      waveSourceLabel = "Open-Meteo 우선";
+      scoreCap = 78;
+      flags.push("JMA 보정값이 Open-Meteo와 크게 달라 파고 보정 제외");
+    } else if (typeof jmaHeight === "number" && typeof openMeteoHeight === "number") {
       const diff = Math.abs(jmaHeight - openMeteoHeight);
       waveSourceLabel = "Open-Meteo + JMA 보정";
       confidence = diff >= 0.6 ? "low" : diff >= 0.35 ? "medium" : "high";

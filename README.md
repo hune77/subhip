@@ -136,6 +136,8 @@ GET /api/surf-data/refresh
 
 2026년 6월 2일 다대포는 실제 현장 체감상 “약다대뽕”으로 보고, 이 날의 데이터 패턴을 보정 샘플로 사용합니다. 완전한 남스웰이 아니더라도 남동~동남 계열, 0.8~1.0m 전후, 비가 그친 시간대, 중물~만조권, 약~중간 오프쇼어/사이드 바람이면 약다대뽕 후보로 하한 점수를 보정합니다.
 
+외부 서핑 앱의 차트는 정답으로 보지 않고 비교 모델로만 사용합니다. 실제 현장 후기, 우리 데이터, Open-Meteo, JMA/IMOC, 외부 서핑 앱이 서로 얼마나 일치하는지 비교해서 데이터 정합성을 높입니다.
+
 파고 기준:
 
 - 0.4m 미만: 너무 작음, 패들/테이크오프 연습 수준
@@ -176,7 +178,7 @@ GET /api/surf-data/refresh
 - 화면에는 일본 파고 이미지를 띄우지 않고, 스크립트가 부산 연안 근처 픽셀 색상을 읽어 `client/data/jma-wave.json`, `docs/data/jma-wave.json`으로 데이터화합니다.
 - JMA/IMOC 지도는 현재 약 3일치만 제공됩니다. 앱은 이 범위 안에서는 `JMA 보정`, 4일째부터는 `Open-Meteo 단독`으로 표시합니다.
 - 하루가 지나면 JMA/IMOC 페이지도 새 3일 구간으로 밀려나므로, GitHub Actions 또는 로컬 `npm run update:jma` 실행으로 다시 앞 3일의 보정 정확도가 갱신됩니다.
-- JMA 값은 지도 색상 밴드 기반의 근사치이므로, Open-Meteo 파고를 완전히 대체하지 않고 `Open-Meteo 60% + JMA 40%` 비율로 합산합니다.
+- JMA 값은 지도 색상 밴드 기반의 근사치이므로, Open-Meteo 파고를 완전히 대체하지 않습니다. 두 값의 차이가 0.8m 미만이면 `Open-Meteo 60% + JMA 40%` 비율로 합산하고, 0.8m 이상이면 JMA 보정을 제외하고 `Open-Meteo 우선`으로 표시합니다.
 
 시간대 필터:
 
@@ -203,10 +205,10 @@ GET /api/surf-data/refresh
 - `tide_phase_advanced`: `low`, `low_rising`, `low_mid`, `mid_rising`, `high_approach`, `high_falling`, `mid_falling`
 - `tide_trend`: `rising`, `falling`, `turning`, `unknown`
 - `wave_height_used`: 실제 점수 계산에 사용한 파고
-- `wave_source_label`: `Open-Meteo 단독`, `JMA 보정`, `Open-Meteo + JMA 보정`
+- `wave_source_label`: `Open-Meteo 단독`, `JMA 보정`, `Open-Meteo + JMA 보정`, `Open-Meteo 우선`
 - `current_risk`, `beginner_warning`, `local_comment`
 
-JMA/IMOC 파고 보정은 현재 지도 데이터 특성상 약 3일치만 신뢰도 높은 보정으로 쓰고, 4일째부터는 `Open-Meteo 단독`으로 명시합니다. 하루가 지나면 GitHub Actions 또는 `npm run update:jma`가 새 3일 구간을 다시 갱신합니다.
+JMA/IMOC 파고 보정은 현재 지도 데이터 특성상 약 3일치만 사용할 수 있고, 4일째부터는 `Open-Meteo 단독`으로 명시합니다. 다만 3일치 안에서도 Open-Meteo와 JMA 색상 판독값의 차이가 0.8m 이상이면 과보정 가능성이 크다고 보고 `Open-Meteo 우선`으로 점수 계산합니다. 하루가 지나면 GitHub Actions 또는 `npm run update:jma`가 새 3일 구간을 다시 갱신합니다.
 
 ## 투데이 체크 카드
 

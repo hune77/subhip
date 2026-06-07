@@ -242,6 +242,12 @@ function combineWaveHeights(openMeteoHeight, jmaHeight) {
   return roundWaveHeight(openMeteoHeight * (1 - JMA_BLEND_WEIGHT) + jmaHeight * JMA_BLEND_WEIGHT);
 }
 
+function shouldUseJmaCorrection(openMeteoHeight, jmaHeight) {
+  if (typeof jmaHeight !== "number") return false;
+  if (typeof openMeteoHeight !== "number") return true;
+  return Math.abs(jmaHeight - openMeteoHeight) < 0.8;
+}
+
 function findNearestJmaFrame(jmaData, timeText, spot) {
   const frames = jmaData?.forecastHours || [];
   if (!frames.length) return null;
@@ -276,20 +282,31 @@ function applyJmaWaveData(hourly, spot, jmaData) {
       return frame;
     }
 
+    const useJmaCorrection = shouldUseJmaCorrection(frame.wave_height, match.spotData.heightM);
+
     frame.jma_wave = {
       available: true,
-      source_label: "JMA 보정",
+      source_label: useJmaCorrection ? "JMA 보정" : "JMA 불일치 제외",
+      ignored: !useJmaCorrection,
       time: match.frame.time,
       height_m: match.spotData.heightM,
       band: match.spotData.band,
-      image_url: match.frame.imageUrl
+      image_url: match.frame.imageUrl,
+      reason: useJmaCorrection
+        ? null
+        : "Open-Meteo와 JMA 색상 보정 파고 차이가 커서 점수 계산에서는 Open-Meteo를 우선합니다."
     };
-    frame.combined_wave_height = combineWaveHeights(frame.wave_height, match.spotData.heightM);
+    frame.combined_wave_height = !useJmaCorrection
+      ? roundWaveHeight(frame.wave_height)
+      : combineWaveHeights(frame.wave_height, match.spotData.heightM);
     return frame;
   });
 }
 
 function waveSourceText(item) {
+  if (item?.jma_wave?.ignored) {
+    return "Open-Meteo 우선";
+  }
   if (item?.jma_wave?.available) {
     return `JMA ${item.jma_wave.band} 보정`;
   }
@@ -1180,10 +1197,11 @@ function renderDetails() {
   }
 
   if (spot.map_image) {
+    const mapTitle = spot.region === "songjeong" ? "송정 포인트 지도" : "다대포 포인트 지도";
     cards.unshift({
       icon: "ph-image",
-      title: "다대포 포인트 지도",
-      body: `<img class="spot-map" src="${spot.map_image}" alt="다대포 포인트 안내">`
+      title: mapTitle,
+      body: `<img class="spot-map" src="${spot.map_image}" alt="${mapTitle}">`
     });
   }
 
