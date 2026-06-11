@@ -171,15 +171,15 @@ function isDirectionBetween(deg, min, max) {
 }
 
 function isSongjeongOptimalSwellDirection(deg) {
-  return isDirectionBetween(deg, 135, 190);
+  return isDirectionBetween(deg, 105, 180);
 }
 
 function isSongjeongEastSwellDirection(deg) {
-  return angularDistance(deg, 90) <= 25;
+  return isDirectionBetween(deg, 70, 110);
 }
 
 function isSongjeongBlockedSwellDirection(deg) {
-  return angularDistance(deg, 45) <= 30;
+  return isDirectionBetween(deg, 25, 65);
 }
 
 function isSongjeongOffshoreWind(deg) {
@@ -187,7 +187,7 @@ function isSongjeongOffshoreWind(deg) {
 }
 
 function isSongjeongOnshoreWind(deg) {
-  return angularDistance(deg, 180) <= 35 || angularDistance(deg, 225) <= 35;
+  return isDirectionBetween(deg, 80, 175);
 }
 
 function directionArrow(deg) {
@@ -399,9 +399,14 @@ function gearRecommendation(frame) {
   if (rain.label !== "비 없음") extras.push("방수 자켓·여벌 옷");
   if (wind >= 7) extras.push("바람막이");
   if (typeof air === "number" && air <= 12) extras.push("입수 전후 보온");
+  let label = waterGear;
+  if (rain.label !== "비 없음" && typeof sea === "number" && sea <= 22) {
+    label = "3/2mm 풀슈트 권장";
+    extras.push("비 오면 체감 낮음");
+  }
 
   return {
-    label: waterGear,
+    label,
     detail: `${airLabel}${extras.length ? ` · ${extras.join(", ")}` : ""}`
   };
 }
@@ -438,7 +443,7 @@ function beginnerSwellText(frame, spot) {
   if (spot.region === "dadaepo") {
     return "스웰은 먼바다에서 들어오는 파도 방향. 다대포는 SW~SSW가 베스트, 남스웰은 가능, 동해 계열은 힘이 죽기 쉽습니다.";
   }
-  return "스웰은 먼바다에서 들어오는 파도 방향. 송정은 남동~남쪽 계열이면 해변으로 잘 들어옵니다.";
+  return "스웰은 먼바다에서 들어오는 파도 방향. 송정은 S~SE가 안정적이고 E/ENE도 사이즈와 주기가 맞으면 열어둡니다.";
 }
 
 function todayBeginnerSummary(frame, spot) {
@@ -542,19 +547,19 @@ function classifySwell(frame, spot) {
   if (spot.region === "songjeong") {
     if (isSongjeongOptimalSwellDirection(frame.wave_direction)) {
       return {
-        type: "남~남동 스웰",
+        type: "송정 정스웰",
         passed: waveHeight >= 0.5,
         diff: angularDistance(frame.wave_direction, 160),
-        comment: "송정이 정면으로 받기 쉬운 S~SE 계열입니다. 사이즈가 받쳐주면 메인 라인업이 살아날 가능성이 높습니다."
+        comment: "송정이 안정적으로 받기 쉬운 S~SE 계열입니다. 사이즈와 주기가 받쳐주면 메인 라인업이 살아날 가능성이 높습니다."
       };
     }
 
     if (isSongjeongEastSwellDirection(frame.wave_direction)) {
       return {
-        type: "동스웰",
+        type: "E/ENE 체크 스웰",
         passed: waveHeight >= 0.8,
         diff: angularDistance(frame.wave_direction, 90),
-        comment: "동쪽 계열이라 완전 정면은 아니지만, 사이즈가 있으면 송정에서 탈 만한 파도가 생길 수 있습니다."
+        comment: "커뮤니티 체감상 송정에서 열릴 수 있는 동~동북동 계열입니다. 다만 실제 체감은 사이즈와 주기, 물때를 같이 봅니다."
       };
     }
 
@@ -563,7 +568,7 @@ function classifySwell(frame, spot) {
         type: "북동 스웰",
         passed: false,
         diff: angularDistance(frame.wave_direction, 45),
-        comment: "NE 계열은 방파제와 해안 지형 영향으로 차트보다 약하거나 정리되지 않을 가능성이 큽니다."
+        comment: "NE 계열은 차트보다 약하거나 힘 없이 들어올 수 있습니다. 6/8 현장 후기처럼 작고 물이 빠지면 라이딩이 짧을 수 있습니다."
       };
     }
 
@@ -571,7 +576,7 @@ function classifySwell(frame, spot) {
       type: "송정 비주류 스웰",
       passed: false,
       diff: angularDistance(frame.wave_direction, 160),
-      comment: "송정 메인 라인업 기준으로는 방향 메리트가 약합니다. JMA 보정 파고가 커도 현장 확인이 필요합니다."
+      comment: "송정 메인 라인업 기준으로는 방향 메리트가 약합니다. 파고가 보여도 주기와 실제 힘을 보수적으로 봅니다."
     };
   }
 
@@ -625,6 +630,21 @@ function classifyTide(frame, spot) {
     };
   }
 
+  if (spot.region === "songjeong") {
+    const phase = frame.tide_phase_advanced || "unknown";
+    const good = phase === "mid_rising" || phase === "high_approach";
+    const lowWater = phase === "low" || phase === "low_mid" || phase === "mid_falling";
+    return {
+      type: tidePhaseLabel(phase),
+      passed: good,
+      comment: good
+        ? "송정은 들물 중반~만조 전 흐름을 우선합니다. 작은 파도도 조금 더 길게 밀릴 수 있습니다."
+        : lowWater
+          ? "물이 빠진 시간대라 작은 파도는 힘이 약하고 라이딩이 짧을 수 있습니다."
+          : "송정은 다대포처럼 썰물을 무조건 좋게 보지 않고, 물이 차는 흐름을 더 봅니다."
+    };
+  }
+
   const tide = frame.tide_phase || "unknown";
   if (spot.tidePreference === "low-mid") {
     const passed = tide === "low" || tide === "mid";
@@ -654,11 +674,13 @@ function translateWaveHeight(height, spot) {
   if (height === null || height === undefined) return "파고 데이터가 아직 없습니다.";
 
   if (spot.region === "songjeong") {
-    if (height < 0.4) return "송정 기준으로 작습니다. 패들 연습이나 소프트보드 정도로 보세요.";
-    if (height < 0.5) return "작지만 정스웰이면 롱보드로 겨우 탈 수 있는 구간입니다.";
-    if (height < 0.8) return "정스웰이면 롱보드 기준 탈만합니다. 한국 기준으로는 나쁘지 않습니다.";
-    if (height < 1.5) return "송정 기준 좋은 사이즈입니다. 바람만 약하면 충분히 즐길 만합니다.";
-    return "송정 기준 큽니다. 초보자는 위험할 수 있습니다.";
+    if (height < 0.5) return "송정 기준으로 많이 작습니다. 라이딩보다는 패들 연습이나 밀어타기 정도로 보세요.";
+    if (height < 0.6) return "송정 기준 작고 힘이 약한 사이즈입니다. 롱보드로도 길게 타기 어려울 수 있습니다.";
+    if (height < 0.8) return "롱보드 가능성은 있지만 좋은 날은 아닙니다. 물이 빠지면 라이딩이 짧아질 수 있습니다.";
+    if (height < 1.0) return "송정 기준 기본 사이즈입니다. 주기와 바람이 맞으면 롱보드/미드렝스는 체크할 만합니다.";
+    if (height < 1.5) return "송정 기준 재밌을 수 있는 사이즈입니다. 짧은 주기와 간조 덤프만 같이 확인하세요.";
+    if (height < 1.8) return "송정 기준 큰 편입니다. 초보자는 조심하고 덤프/클로즈아웃을 확인하세요.";
+    return "송정 기준 과한 사이즈입니다. 덤프나 클로즈아웃 가능성이 커집니다.";
   }
 
   if (height < 0.7) return "다대포 기준 작습니다. 포인트와 타이드가 받쳐줘야 합니다.";
@@ -671,10 +693,12 @@ function translateWavePeriod(period, spot) {
   if (period === null || period === undefined) return "주기 데이터가 아직 없습니다.";
 
   if (spot.region === "songjeong") {
-    if (period >= 10) return "송정은 10초 이상 긴 피리어드에서 사이즈가 크면 덤프 성향이 생길 수 있습니다. 현장 체크가 필요합니다.";
-    if (period >= 8) return "송정 기준 힘이 잘 붙는 좋은 주기입니다. S~SE 스웰과 약한 바람이면 우선 확인할 만합니다.";
-    if (period >= 6) return "송정 기준 탈 수 있는 최소권 주기입니다. 파고와 스웰 방향이 더 중요합니다.";
-    return "주기가 짧아 힘이 약할 수 있습니다.";
+    if (period >= 11) return "송정 기준 긴 주기입니다. 1m 이상이면 좋은 벽과 덤프 가능성을 같이 봅니다.";
+    if (period >= 9) return "송정에서 기대감이 붙는 주기입니다. 파고와 바람이 맞으면 좋은 날 후보입니다.";
+    if (period >= 8) return "송정 기준 괜찮은 주기입니다. 롱보드/미드렝스가 재미있을 수 있습니다.";
+    if (period >= 7) return "송정 기준 최소권 주기입니다. 파고가 작으면 힘이 부족할 수 있습니다.";
+    if (period >= 5) return "파고가 있어 보여도 주기가 짧아 힘이 약하거나 짧게 닫힐 수 있습니다.";
+    return "주기가 짧아 라이딩보다는 패들 연습에 가까울 수 있습니다.";
   }
 
   if (period >= 11) return "다대포 기준 다대뽕 후보 주기입니다. SW~SSW 스웰과 썰물 타이밍이면 강하게 봅니다.";
@@ -879,6 +903,9 @@ function translateFrame(frame, spot) {
     wave_source_label: localScore?.wave_source_label || waveSourceText(frame),
     current_risk: Boolean(localScore?.current_risk),
     beginner_warning: Boolean(localScore?.beginner_warning),
+    dump_risk: localScore?.dump_risk || null,
+    dump_risk_score: localScore?.dump_risk_score || 0,
+    songjeong_level: localScore?.songjeong_level || null,
     local_comment: localScore?.local_comment || "",
     summary: `${rating}: 파고 ${waveHeight ?? "-"}m, 주기 ${frame.wave_period ?? "-"}초, ${swell.type}, 바람 ${wind.wind_type}${sourceSuffix}`
   };
@@ -895,8 +922,8 @@ function conditionChecks(item) {
   const swell = classifySwell(item, spot);
   const tide = classifyTide(item, spot);
   const waveHeight = item.translated?.wave_height_used ?? scoreWaveHeight(item);
-  const wavePass = spot.region === "songjeong" ? waveHeight >= 0.5 : waveHeight >= 0.8;
-  const periodPass = spot.region === "songjeong" ? item.wave_period >= 6 : item.wave_period >= 8;
+  const wavePass = spot.region === "songjeong" ? waveHeight >= 0.8 : waveHeight >= 0.8;
+  const periodPass = item.wave_period >= 8;
   const windPass = spot.region === "songjeong"
     ? (item.wind_speed_10m ?? 99) * 3.6 <= 5 || isSongjeongOffshoreWind(item.wind_direction_10m)
     : item.wind_speed_10m <= 5 || (item.translated.wind_type === "오프쇼어" && item.wind_speed_10m <= 7);
@@ -917,6 +944,21 @@ function conditionChecks(item) {
     }
   }
 
+  if (spot.region === "songjeong") {
+    const dumpRisk = item.translated?.dump_risk || "none";
+    const dumpLabel = {
+      none: "낮음",
+      low: "힘/길이 주의",
+      medium: "덤프 주의",
+      high: "덤프 높음",
+      unknown: "정보 부족"
+    }[dumpRisk] || dumpRisk;
+    checks.push({ key: "dump", label: "덤프/힘", passed: dumpRisk === "none", value: dumpLabel });
+    if (item.translated?.songjeong_level) {
+      checks.push({ key: "level", label: "레벨", passed: item.translated.songjeong_level !== "패들연습", value: item.translated.songjeong_level });
+    }
+  }
+
   return checks;
 }
 
@@ -927,6 +969,18 @@ function formatBestWindow(item) {
 
 function buildVerdict(best) {
   if (!best) return "데이터 대기 중";
+  if (best.translated?.songjeong_level === "패들연습") {
+    return "송정 현장 후기 기준으로는 라이딩보다 패들 연습이나 밀어타기에 가까운 구간입니다.";
+  }
+  if (best.translated?.dump_risk === "high" || best.translated?.dump_risk === "medium") {
+    return "사이즈가 있어도 덤프나 닫힘 가능성이 있습니다. 물이 조금 차는 시간대를 다시 확인하세요.";
+  }
+  if (best.translated?.songjeong_level === "송정 좋은 날") {
+    return "송정 기준 좋은 날에 가까운 조합입니다. 면이 열리면 롱보드와 미드보드 모두 기대할 수 있습니다.";
+  }
+  if (best.translated?.songjeong_level === "펀웨이브") {
+    return "송정 기준 꽤 탈 만한 조건입니다. 롱보드와 미드렝스가 재미있을 가능성이 있습니다.";
+  }
   if (best.translated?.dadaeppong_grade === "다대뽕") {
     return "다대뽕 조건이 겹친 시간입니다. SW~SSW 계열, 긴 주기, 약한 북풍, 썰물 타이밍이면 다대포 메인 체크 우선입니다.";
   }
@@ -1124,7 +1178,7 @@ function renderCriteriaCard() {
   const checks = conditionChecks(best);
   const criteriaText =
     spot.region === "songjeong"
-      ? "송정: S~SE 스웰 최우선, E 스웰은 사이즈가 있을 때만. 8초 이상 주기와 W/NW 오프쇼어를 가산하고, NE 스웰과 S/SW 온쇼어는 감점."
+      ? "송정: 0.8m 이상, 8~10초 주기, W/NW 약풍, 들물 중반~만조 전을 우선. 작은 파도+간조는 힘 없음, 1m 이상+짧은 주기는 덤프를 경고."
       : "다대포: 파고보다 주기 우선. SW~SSW 스웰, 9초 이상 주기, N/NNE/NE 약풍, 중썰물~간조 전후를 강하게 봅니다.";
 
   elements.criteriaCard.innerHTML = `

@@ -14,11 +14,13 @@ function translateWaveHeight(height, spot = {}) {
   }
 
   if (spot.region === "songjeong") {
-    if (height < 0.4) return "송정 기준으로는 작습니다. 롱보드로도 재미가 약할 수 있습니다.";
-    if (height < 0.5) return "작지만 정스웰과 약한 바람이면 롱보드 체크는 가능합니다.";
-    if (height < 0.8) return "송정에서 탈 만한 기본 사이즈입니다. 방향과 바람이 중요합니다.";
-    if (height < 1.5) return "송정 기준 좋은 사이즈입니다. 장주기면 덤프 가능성도 같이 봐야 합니다.";
-    return "송정 기준 강한 사이즈입니다. 초보자는 위험할 수 있습니다.";
+    if (height < 0.5) return "송정 기준으로 많이 작습니다. 라이딩보다는 패들 연습이나 밀어타기 정도로 보세요.";
+    if (height < 0.6) return "송정 기준 작고 힘이 약한 사이즈입니다. 롱보드로도 길게 타기 어려울 수 있습니다.";
+    if (height < 0.8) return "롱보드 가능성은 있지만 좋은 날은 아닙니다. 물이 빠지면 라이딩이 짧아질 수 있습니다.";
+    if (height < 1.0) return "송정 기준 기본 사이즈입니다. 주기와 바람이 맞으면 롱보드/미드렝스는 체크할 만합니다.";
+    if (height < 1.5) return "송정 기준 재밌을 수 있는 사이즈입니다. 짧은 주기와 간조 덤프만 같이 확인하세요.";
+    if (height < 1.8) return "송정 기준 큰 편입니다. 초보자는 조심하고 덤프/클로즈아웃을 확인하세요.";
+    return "송정 기준 과한 사이즈입니다. 덤프나 클로즈아웃 가능성이 커집니다.";
   }
 
   if (height < 0.5) return "다대포 기준으로 작습니다. 스팟과 물때가 받쳐줘야 합니다.";
@@ -44,10 +46,12 @@ function translateWavePeriod(period, spot = {}) {
   }
 
   if (spot.region === "songjeong") {
-    if (period >= 10) return "송정은 장주기와 1m 이상 파고가 만나면 덤프 성향이 생길 수 있습니다.";
-    if (period >= 7) return "송정에서 힘이 붙는 주기입니다. 정스웰이면 체크 가치가 있습니다.";
-    if (period >= 6) return "탈 수는 있지만 힘이 약할 수 있습니다.";
-    return "주기가 짧아 파도가 급하고 힘이 약할 수 있습니다.";
+    if (period >= 11) return "송정 기준 긴 주기입니다. 1m 이상이면 좋은 벽과 덤프 가능성을 같이 봅니다.";
+    if (period >= 9) return "송정에서 기대감이 붙는 주기입니다. 파고와 바람이 맞으면 좋은 날 후보입니다.";
+    if (period >= 8) return "송정 기준 괜찮은 주기입니다. 롱보드/미드렝스가 재미있을 수 있습니다.";
+    if (period >= 7) return "송정 기준 최소권 주기입니다. 파고가 작으면 힘이 부족할 수 있습니다.";
+    if (period >= 5) return "파고가 있어 보여도 주기가 짧아 힘이 약하거나 짧게 닫힐 수 있습니다.";
+    return "주기가 짧아 라이딩보다는 패들 연습에 가까울 수 있습니다.";
   }
 
   if (period >= 11) return "다대포 기준 다대뽕 후보 주기입니다. SW~SSW 스웰과 썰물 타이밍이면 강하게 봅니다.";
@@ -132,8 +136,8 @@ function classifyLocalSwell(frame, spot = {}) {
   }
 
   if (SurfScoring.isDirectionBetween(dir, 105, 180)) return "송정 정스웰";
-  if (SurfScoring.isDirectionBetween(dir, 85, 105) && height >= 0.8) return "동스웰 체크";
-  if (SurfScoring.isDirectionBetween(dir, 35, 75)) return "NE 차단 스웰";
+  if (SurfScoring.isDirectionBetween(dir, 70, 110) && height >= 0.8) return "E/ENE 체크 스웰";
+  if (SurfScoring.isDirectionBetween(dir, 25, 65)) return "NE 약스웰";
   return "송정 비주류 스웰";
 }
 
@@ -186,6 +190,9 @@ function translateSurfFrame(frame, spot) {
     current_risk: localScore.current_risk,
     beginner_warning: localScore.beginner_warning,
     rain_risk: localScore.rain_risk,
+    dump_risk: localScore.dump_risk,
+    dump_risk_score: localScore.dump_risk_score,
+    songjeong_level: localScore.songjeong_level,
     local_comment: localScore.local_comment,
     summary: `${localScore.rating}: 파고 ${valueLabel(waveHeight, "m")}, 주기 ${valueLabel(frame.wave_period, "초")}, ${swellType}, 바람 ${windType}`
   };

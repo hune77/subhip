@@ -79,7 +79,7 @@
       : isDirectionBetween(deg, 260, 285) || isDirectionBetween(deg, 20, 45);
     const onshore = isDadaepo
       ? isDirectionBetween(deg, 130, 240)
-      : isDirectionBetween(deg, 120, 230);
+      : isDirectionBetween(deg, 80, 175);
 
     let scoreDelta = 0;
     const flags = [];
@@ -145,8 +145,8 @@
       "dadaepo-mid": { mid_falling: 16, low_mid: 14, low_rising: 10, low: 6, mid_rising: 4, high_approach: -10, high_falling: -2 },
       "dadaepo-morundae": { mid_falling: 14, low_mid: 12, low_rising: 8, low: 5, mid_rising: 3, high_approach: -8, high_falling: -2 },
       "dadaepo-songan": { low_mid: 14, low: 10, low_rising: 10, mid_falling: 8, mid_rising: 4, high_approach: -12, high_falling: -10 },
-      "songjeong-surfholic": { mid_rising: 10, high_approach: 8, low_rising: 6 },
-      "songjeong-lastwave": { mid_rising: 8, high_approach: 6, low_rising: 4 }
+      "songjeong-surfholic": { mid_rising: 10, high_approach: 8, low_rising: 2, low_mid: -6, low: -8, mid_falling: -4 },
+      "songjeong-lastwave": { mid_rising: 8, high_approach: 6, low_rising: 2, low_mid: -8, low: -10, mid_falling: -5 }
     };
     return tables[type]?.[phase] || 0;
   }
@@ -180,6 +180,65 @@
     }
 
     return { confidence, flags, score_cap: scoreCap, wave_source_label: waveSourceLabel };
+  }
+
+  function isSongjeongLowWater(phase) {
+    return phase === "low" || phase === "low_mid" || phase === "mid_falling";
+  }
+
+  function calculateSongjeongDumpRisk(frame, windInfo) {
+    const height = waveHeightUsed(frame);
+    const period = frame?.wave_period;
+    const phase = frame?.tide_phase_advanced;
+    const flags = [];
+    let score = 0;
+
+    if (typeof height !== "number" || typeof period !== "number") {
+      return { level: "unknown", score: 0, flags };
+    }
+
+    if (height >= 1.0 && period < 7) {
+      score += 35;
+      flags.push("사이즈는 있지만 주기가 짧아 덤프성 파도일 수 있음");
+    } else if (height >= 0.8 && period < 7) {
+      score += 18;
+      flags.push("주기가 짧아 힘이 짧게 끊길 수 있음");
+    }
+
+    if (isSongjeongLowWater(phase)) {
+      score += height >= 0.9 ? 25 : 10;
+      if (height >= 0.9) {
+        flags.push("간조에 가까워 덤프가 생길 수 있음");
+      } else {
+        flags.push("물이 빠져 라이딩이 짧을 수 있음");
+      }
+    }
+
+    if (windInfo?.wind_class === "onshore") {
+      score += 18;
+      flags.push("E~SE 온쇼어 영향으로 면이 깨지고 닫힐 수 있음");
+    }
+
+    if (height >= 1.8) {
+      score += 30;
+      flags.push("송정 기준 사이즈가 커서 덤프나 클로즈아웃 가능성");
+    }
+
+    const level = score >= 55 ? "high" : score >= 28 ? "medium" : score > 0 ? "low" : "none";
+    return { level, score, flags };
+  }
+
+  function classifySongjeongLevel(frame, score, dumpRisk) {
+    const height = waveHeightUsed(frame);
+    const period = frame?.wave_period;
+    const phase = frame?.tide_phase_advanced;
+
+    if (typeof height !== "number" || typeof period !== "number") return "정보 부족";
+    if (height <= 0.5 || score < 45) return "패들연습";
+    if (height < 0.8 || isSongjeongLowWater(phase)) return "롱보드 가능";
+    if (height >= 1.0 && height <= 1.5 && period >= 9 && dumpRisk?.level !== "high") return "송정 좋은 날";
+    if (height >= 0.8 && period >= 8 && dumpRisk?.level !== "high") return "펀웨이브";
+    return "롱보드 가능";
   }
 
   function classifyDadaeppongGrade(frame, spot, windInfo) {
@@ -273,22 +332,38 @@
     return { score: nextScore, risk };
   }
 
-function applySongjeongCaps(score, frame, flags) {
+  function applySongjeongCaps(score, frame, flags) {
     let nextScore = score;
     let beginnerWarning = false;
     const height = waveHeightUsed(frame);
+    const period = frame?.wave_period;
+    const phase = frame?.tide_phase_advanced;
 
-    if (height < 0.4) {
-      nextScore = Math.min(nextScore, 45);
-      flags.push("송정 기준 파고가 너무 작음");
-    } else if (height < 0.5) {
-      nextScore = Math.min(nextScore, 58);
-      flags.push("롱보드로도 약한 사이즈");
-    } else if (height < 0.8) {
-      nextScore = Math.min(nextScore, 70);
-      flags.push("탈 수는 있지만 좋은 사이즈는 아님");
+    if (typeof height !== "number") {
+      flags.push("파고 데이터 부족");
+      return { score: Math.min(nextScore, 45), beginner_warning: false };
     }
-    if (height >= 1.0 && frame?.wave_period >= 10) {
+
+    if (height < 0.5) {
+      nextScore = Math.min(nextScore, 42);
+      flags.push("송정 기준 파고가 너무 작음");
+    } else if (height < 0.6) {
+      nextScore = Math.min(nextScore, 50);
+      flags.push("롱보드로도 힘이 약한 사이즈");
+    } else if (height < 0.8) {
+      nextScore = Math.min(nextScore, isSongjeongLowWater(phase) ? 54 : 64);
+      flags.push("롱보드 가능성은 있지만 좋은 사이즈는 아님");
+    }
+
+    if (height < 0.9 && isSongjeongLowWater(phase)) {
+      nextScore = Math.min(nextScore, 52);
+      flags.push("물이 많이 빠지면 작은 파도는 라이딩이 짧을 수 있음");
+    }
+
+    if (height >= 1.0 && period < 7) {
+      nextScore = Math.min(nextScore, 66);
+      flags.push("사이즈는 있어도 주기가 짧아 덤프성 파도 가능");
+    } else if (height >= 1.0 && period >= 10 && isSongjeongLowWater(phase)) {
       nextScore = Math.min(nextScore, 72);
       flags.push("송정 장주기 덤프 가능성");
     }
@@ -296,6 +371,11 @@ function applySongjeongCaps(score, frame, flags) {
       nextScore = Math.min(nextScore, 78);
       beginnerWarning = true;
       flags.push("초보자 위험 사이즈");
+    }
+    if (height >= 1.8) {
+      nextScore = Math.min(nextScore, 70);
+      beginnerWarning = true;
+      flags.push("송정 기준 클로즈아웃 주의");
     }
 
     return { score: nextScore, beginner_warning: beginnerWarning };
@@ -335,40 +415,63 @@ function applySongjeongCaps(score, frame, flags) {
     const height = waveHeightUsed(frame);
     const period = frame?.wave_period;
     const dir = normalize360(frame?.wave_direction);
-    let score = 28;
+    let score = 24;
 
     if (type === "songjeong-surfholic") {
-      if (height >= 0.4 && height <= 1.2) score += 22;
-      else if (height > 1.2 && height < 1.5) score += 10;
-      else score -= 10;
+      if (height >= 1.0 && height <= 1.5) score += 25;
+      else if (height >= 0.8 && height < 1.0) score += 20;
+      else if (height >= 0.6 && height < 0.8) score += 10;
+      else if (height > 1.5 && height < 1.8) score += 8;
+      else score -= 12;
 
-      if (isDirectionBetween(dir, 105, 165)) score += 24;
-      else if (isDirectionBetween(dir, 85, 105) && height >= 0.8) score += 10;
+      if (isDirectionBetween(dir, 105, 175)) score += 24;
+      else if (isDirectionBetween(dir, 70, 105) && height >= 0.8 && period >= 7) score += 16;
+      else if (isDirectionBetween(dir, 65, 120) && height >= 0.75) score += 8;
+      else if (isDirectionBetween(dir, 25, 65)) score -= 16;
       else score -= 12;
     } else {
-      if (height >= 0.5 && height <= 1.3) score += 22;
-      else if (height > 1.3 && height < 1.5) score += 8;
-      else score -= 12;
+      if (height >= 1.0 && height <= 1.5) score += 25;
+      else if (height >= 0.8 && height < 1.0) score += 20;
+      else if (height >= 0.6 && height < 0.8) score += 9;
+      else if (height > 1.5 && height < 1.8) score += 7;
+      else score -= 14;
 
-      if (isDirectionBetween(dir, 130, 180)) score += 24;
-      else if (isDirectionBetween(dir, 85, 130) && height >= 0.9) score += 8;
+      if (isDirectionBetween(dir, 115, 180)) score += 24;
+      else if (isDirectionBetween(dir, 70, 115) && height >= 0.8 && period >= 7) score += 16;
+      else if (isDirectionBetween(dir, 65, 130) && height >= 0.75) score += 8;
+      else if (isDirectionBetween(dir, 25, 65)) score -= 16;
       else score -= 14;
     }
 
-    if (period >= 7 && period <= 12) score += 18;
-    else if (period >= 6) score += 8;
+    if (period >= 9 && period <= 11.5) score += 22;
+    else if (period >= 8) score += 18;
+    else if (period >= 7) score += 10;
+    else if (period >= 6) score += 2;
     else score -= 12;
 
     score += windInfo.score_delta;
     score += tideScoreForSpot(frame?.tide_phase_advanced, spot);
+    const dumpRisk = calculateSongjeongDumpRisk(frame, windInfo);
+    flags.push(...dumpRisk.flags);
 
-    if (dir !== null && isDirectionBetween(dir, 35, 75)) {
+    if (dumpRisk.level === "high") score = Math.min(score, 64);
+    else if (dumpRisk.level === "medium") score = Math.min(score, 72);
+
+    if (dir !== null && isDirectionBetween(dir, 25, 65)) {
       score = Math.min(score, 58);
       flags.push("NE 계열은 방파제 영향으로 차트보다 약할 수 있음");
     }
 
     const caps = applySongjeongCaps(score, frame, flags);
-    return { score: caps.score, beginner_warning: caps.beginner_warning };
+    const cappedScore = Math.min(caps.score, 92);
+    const level = classifySongjeongLevel(frame, cappedScore, dumpRisk);
+    return {
+      score: cappedScore,
+      beginner_warning: caps.beginner_warning,
+      dump_risk: dumpRisk.level,
+      dump_risk_score: dumpRisk.score,
+      songjeong_level: level
+    };
   }
 
   function scoreDadaepo(frame, spot, flags, windInfo) {
@@ -461,7 +564,19 @@ function applySongjeongCaps(score, frame, flags) {
         ? `다대포 ${result.dadaeppong_grade} 예보입니다. 파고만 보지 말고 조위와 비 직후 하구 리스크를 같이 보세요.`
         : "다대포는 파고보다 주기, SW~SSW 스웰, 썰물 타이밍, 북풍 계열 약풍을 함께 봅니다.";
     }
-    return "송정은 장주기와 사이즈가 함께 커지면 덤프 가능성을 같이 봅니다.";
+    if (result.songjeong_level === "패들연습") {
+      return "송정 현장 후기 기준으로는 라이딩보다 패들 연습에 가까운 조건입니다.";
+    }
+    if (result.dump_risk === "high" || result.dump_risk === "medium") {
+      return "송정은 사이즈와 짧은 주기, 얕은 물이 겹치면 덤프 가능성을 같이 봅니다.";
+    }
+    if (result.songjeong_level === "송정 좋은 날") {
+      return "송정 기준 좋은 날에 가까운 조합입니다. 면이 열리면 롱보드와 미드보드 모두 기대할 수 있습니다.";
+    }
+    if (result.songjeong_level === "펀웨이브") {
+      return "송정 기준 꽤 탈 만한 조건입니다. 롱보드와 미드렝스가 재미있을 수 있습니다.";
+    }
+    return "송정은 파고, 주기, 바람, 물때를 함께 보고 작은 날엔 힘과 라이딩 길이를 보수적으로 봅니다.";
   }
 
   function calculateSurfScore(frame, spot) {
@@ -494,6 +609,9 @@ function applySongjeongCaps(score, frame, flags) {
       current_risk: Boolean(result.current_risk),
       beginner_warning: Boolean(result.beginner_warning),
       rain_risk: result.rain_risk || null,
+      dump_risk: result.dump_risk || null,
+      dump_risk_score: result.dump_risk_score || 0,
+      songjeong_level: type.startsWith("songjeong") ? result.songjeong_level || null : null,
       local_comment: localCommentFor(type, result),
       wind_class: windInfo.wind_class,
       wind_label: windInfo.wind_label
@@ -510,6 +628,8 @@ function applySongjeongCaps(score, frame, flags) {
     applySongjeongCaps,
     applyDadaepoCaps,
     applyRainAfterRisk,
+    calculateSongjeongDumpRisk,
+    classifySongjeongLevel,
     calculateSurfScore,
     ratingFromScore,
     tideScoreForSpot,
