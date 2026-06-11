@@ -93,6 +93,10 @@ function classifyWind(windDirection, beachFacingAngle) {
   };
 }
 
+function windSummaryText(windType) {
+  return windType?.includes("정보 없음") ? "바람 정보 없음" : `바람 ${windType || "-"}`;
+}
+
 function windCommentFromScore(localScore) {
   if (localScore.wind_class === "offshore") {
     return "오프쇼어 또는 크로스오프 성향이라 약하면 파도 면 정리에 유리합니다.";
@@ -194,7 +198,7 @@ function translateSurfFrame(frame, spot) {
     dump_risk_score: localScore.dump_risk_score,
     songjeong_level: localScore.songjeong_level,
     local_comment: localScore.local_comment,
-    summary: `${localScore.rating}: 파고 ${valueLabel(waveHeight, "m")}, 주기 ${valueLabel(frame.wave_period, "초")}, ${swellType}, 바람 ${windType}`
+    summary: `${localScore.rating}: 파고 ${valueLabel(waveHeight, "m")}, 주기 ${valueLabel(frame.wave_period, "초")}, ${swellType}, ${windSummaryText(windType)}`
   };
 }
 

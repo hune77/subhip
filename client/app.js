@@ -4,6 +4,9 @@ const JMA_WAVE_DATA_URL = "./data/jma-wave.json";
 const TIMEZONE = "Asia/Seoul";
 const JMA_BLEND_WEIGHT = 0.4;
 const JMA_MATCH_WINDOW_MS = 3 * 60 * 60 * 1000;
+const JMA_FETCH_TIMEOUT_MS = 5000;
+const MARINE_FETCH_TIMEOUT_MS = 12000;
+const WEATHER_FETCH_TIMEOUT_MS = 6000;
 const surfScoring = globalThis.SurfScoring || null;
 
 const SPOTS = [
@@ -349,7 +352,11 @@ function weatherCodeLabel(code) {
 }
 
 function rainStatus(frame) {
-  const rain = typeof frame.precipitation === "number" ? frame.precipitation : 0;
+  const hasRain = typeof frame.precipitation === "number";
+  const hasCode = typeof frame.weather_code === "number";
+  if (!hasRain && !hasCode) return { label: "비 정보 없음", detail: "날씨 API 지연" };
+
+  const rain = hasRain ? frame.precipitation : 0;
   const code = frame.weather_code;
   if ([95, 96, 99].includes(code)) return { label: "뇌우 주의", detail: `${weatherCodeLabel(code)} · ${rain}mm` };
   if (rain >= 5 || [65, 82].includes(code)) return { label: "강한 비", detail: `${weatherCodeLabel(code)} · ${rain}mm` };
@@ -372,6 +379,13 @@ function tidePhaseLabel(phase) {
 }
 
 function stormRisk(frame) {
+  const hasWeather =
+    typeof frame.wind_speed_10m === "number" ||
+    typeof frame.wind_gusts_10m === "number" ||
+    typeof frame.precipitation === "number" ||
+    typeof frame.weather_code === "number";
+  if (!hasWeather) return { label: "정보 없음", detail: "날씨 API 지연" };
+
   const wind = typeof frame.wind_speed_10m === "number" ? frame.wind_speed_10m : 0;
   const gust = typeof frame.wind_gusts_10m === "number" ? frame.wind_gusts_10m : wind;
   const rain = typeof frame.precipitation === "number" ? frame.precipitation : 0;
@@ -395,12 +409,13 @@ function gearRecommendation(frame) {
   const waterGear = getSuitRecommendation(sea);
   const airLabel = typeof feels === "number" ? `${formatNumber(feels)}°C 체감` : typeof air === "number" ? `${formatNumber(air)}°C 기온` : "기온 정보 없음";
   const extras = [];
+  const hasRainSignal = rain.label !== "비 없음" && rain.label !== "비 정보 없음";
 
-  if (rain.label !== "비 없음") extras.push("방수 자켓·여벌 옷");
+  if (hasRainSignal) extras.push("방수 자켓·여벌 옷");
   if (wind >= 7) extras.push("바람막이");
   if (typeof air === "number" && air <= 12) extras.push("입수 전후 보온");
   let label = waterGear;
-  if (rain.label !== "비 없음" && typeof sea === "number" && sea <= 22) {
+  if (hasRainSignal && typeof sea === "number" && sea <= 22) {
     label = "3/2mm 풀슈트 권장";
     extras.push("비 오면 체감 낮음");
   }
@@ -434,6 +449,7 @@ function boardRecommendation(frame, spot) {
 
 function beginnerWindText(frame) {
   const wind = frame.translated?.wind_type || "";
+  if (wind.includes("정보 없음")) return "바람 데이터가 잠시 비어 있습니다. 파도 면 상태는 현장 캠이나 실시간 바람을 같이 확인하세요.";
   if (wind.includes("오프")) return "오프쇼어는 해변에서 바다로 부는 바람. 약하면 파도 면이 깔끔해집니다.";
   if (wind.includes("온")) return "온쇼어는 바다에서 해변으로 부는 바람. 강하면 파도가 빨리 무너집니다.";
   return "사이드 바람은 옆으로 가르는 바람. 약하면 괜찮고 강하면 라인 잡기가 어렵습니다.";
@@ -446,11 +462,20 @@ function beginnerSwellText(frame, spot) {
   return "스웰은 먼바다에서 들어오는 파도 방향. 송정은 S~SE가 안정적이고 E/ENE도 사이즈와 주기가 맞으면 열어둡니다.";
 }
 
+function windSummaryText(windType) {
+  return windType?.includes("정보 없음") ? "바람 정보 없음" : `바람 ${windType || "-"}`;
+}
+
 function todayBeginnerSummary(frame, spot) {
   const height = frame.translated?.wave_height_used ?? scoreWaveHeight(frame);
   const board = boardRecommendation(frame, spot);
   const rain = rainStatus(frame);
-  return `초보자식으로 풀면: 파고 ${height ?? "-"}m, 주기 ${frame.wave_period ?? "-"}초라 ${board.label} 쪽이 편하고, ${rain.label === "비 없음" ? "비 걱정은 낮은 편" : rain.label + "라 입수 전 확인 필요"}입니다.`;
+  const rainGuide = rain.label === "비 없음"
+    ? "비 걱정은 낮은 편"
+    : rain.label === "비 정보 없음"
+      ? "비 정보가 비어 있어 입수 전 확인이 필요"
+      : `${rain.label}라 입수 전 확인 필요`;
+  return `초보자식으로 풀면: 파고 ${height ?? "-"}m, 주기 ${frame.wave_period ?? "-"}초라 ${board.label} 쪽이 편하고, ${rainGuide}입니다.`;
 }
 
 function classifyWind(windDirection, beachFacingAngle) {
@@ -907,7 +932,7 @@ function translateFrame(frame, spot) {
     dump_risk_score: localScore?.dump_risk_score || 0,
     songjeong_level: localScore?.songjeong_level || null,
     local_comment: localScore?.local_comment || "",
-    summary: `${rating}: 파고 ${waveHeight ?? "-"}m, 주기 ${frame.wave_period ?? "-"}초, ${swell.type}, 바람 ${wind.wind_type}${sourceSuffix}`
+    summary: `${rating}: 파고 ${waveHeight ?? "-"}m, 주기 ${frame.wave_period ?? "-"}초, ${swell.type}, ${windSummaryText(wind.wind_type)}${sourceSuffix}`
   };
 }
 
@@ -1050,11 +1075,12 @@ function renderStatus() {
         minute: "2-digit"
       }).format(new Date(state.data.updated_at))
     : "갱신 시간 없음";
+  const dataWarning = state.data?.last_error ? ` · ${state.data.last_error}` : "";
 
   elements.statusArea.innerHTML = `
     <div class="notice">
       <i class="ph ph-pulse"></i>
-      <span>LIVE ${updatedAt} · 앞 3일은 JMA/IMOC 파고 색상 보정 · 4일째부터는 Open-Meteo 단독</span>
+      <span>LIVE ${updatedAt} · 앞 3일은 JMA/IMOC 파고 색상 보정 · 4일째부터는 Open-Meteo 단독${dataWarning}</span>
     </div>
   `;
 }
@@ -1091,7 +1117,7 @@ function renderBestSummary() {
       <div>
         <p class="section-kicker">OVERALL BEST</p>
         <h2>${formatBestWindow(overallBest)}</h2>
-        <p>${overallBest.translated.rating}, 파고 ${scoreWaveHeight(overallBest)}m, 주기 ${overallBest.wave_period}s, ${overallBest.translated.swell_type}, 바람 ${overallBest.translated.wind_type} · ${waveSourceText(overallBest)}</p>
+        <p>${overallBest.translated.rating}, 파고 ${scoreWaveHeight(overallBest)}m, 주기 ${overallBest.wave_period}s, ${overallBest.translated.swell_type}, ${windSummaryText(overallBest.translated.wind_type)} · ${waveSourceText(overallBest)}</p>
       </div>
       <div class="summary-score ${ratingClass(overallBest.translated.rating)}">
         <span>SCORE</span>
@@ -1436,14 +1462,34 @@ function buildDailySummaries(hourly) {
   });
 }
 
-async function fetchJmaWaveData() {
+async function fetchJsonWithTimeout(url, label, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
-    const response = await fetch(`${JMA_WAVE_DATA_URL}?v=${Date.now()}`);
-    if (!response.ok) return null;
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error(`${label} HTTP ${response.status}`);
     return await response.json();
-  } catch {
-    return null;
+  } catch (error) {
+    const reason = error.name === "AbortError" ? `${timeoutMs / 1000}초 timeout` : error.message;
+    throw new Error(`${label} 요청 실패: ${reason}`);
+  } finally {
+    clearTimeout(timeoutId);
   }
+}
+
+async function fetchOptionalJson(url, label, timeoutMs) {
+  try {
+    return { data: await fetchJsonWithTimeout(url, label, timeoutMs), error: null };
+  } catch (error) {
+    console.warn(error.message);
+    return { data: null, error: error.message };
+  }
+}
+
+async function fetchJmaWaveData() {
+  const result = await fetchOptionalJson(`${JMA_WAVE_DATA_URL}?v=${Date.now()}`, "JMA 파고 보정", JMA_FETCH_TIMEOUT_MS);
+  return result.data;
 }
 
 async function fetchSpotForecast(spot, jmaData) {
@@ -1464,11 +1510,13 @@ async function fetchSpotForecast(spot, jmaData) {
     forecast_days: 7
   })}`;
 
-  const [marineResponse, windResponse] = await Promise.all([fetch(marineUrl), fetch(weatherUrl)]);
-  if (!marineResponse.ok || !windResponse.ok) throw new Error("Open-Meteo 직접 호출 실패");
+  const [marine, weatherResult] = await Promise.all([
+    fetchJsonWithTimeout(marineUrl, `${spot.name} 파고`, MARINE_FETCH_TIMEOUT_MS),
+    // Weather API가 가끔 연결을 오래 붙잡아도 파고 예보는 먼저 보여준다.
+    fetchOptionalJson(weatherUrl, `${spot.name} 날씨/바람`, WEATHER_FETCH_TIMEOUT_MS)
+  ]);
 
-  const marine = await marineResponse.json();
-  const wind = await windResponse.json();
+  const wind = weatherResult.data || { hourly: {} };
   const marineHourly = marine.hourly || {};
   const windHourly = wind.hourly || {};
 
@@ -1509,6 +1557,7 @@ async function fetchSpotForecast(spot, jmaData) {
     ideal_swell_from: spot.idealSwellFrom,
     tide_preference: spot.tidePreference,
     map_image: spot.mapImage,
+    weather_error: weatherResult.error,
     hourly_units: {
       wave_height: "m",
       wave_period: "s",
@@ -1531,13 +1580,14 @@ async function fetchSpotForecast(spot, jmaData) {
 async function fetchSurfData() {
   const jmaData = await fetchJmaWaveData();
   const spots = await Promise.all(SPOTS.map((spot) => fetchSpotForecast(spot, jmaData)));
+  const weatherErrors = spots.filter((spot) => spot.weather_error).map((spot) => `${spot.short_name}: ${spot.weather_error}`);
 
   return {
     updated_at: new Date().toISOString(),
-    last_error: null,
+    last_error: weatherErrors.length ? `날씨/바람 API 일부 지연. 파고 예보 우선 표시 중 (${weatherErrors.length}개 스팟).` : null,
     source: {
       marine: "Open-Meteo Marine API",
-      weather: "Open-Meteo Weather Forecast API",
+      weather: weatherErrors.length ? "Open-Meteo Weather Forecast API 일부 실패, 파고 데이터 우선" : "Open-Meteo Weather Forecast API",
       jma_wave: jmaData ? "IMOC/JMA wave map color-sampled correction for about 3 days" : "JMA correction unavailable",
       tide_note: "sea_level_height_msl is model-based and coastal accuracy is limited"
     },
