@@ -1,18 +1,18 @@
 {
-  "updatedAt": "2026-07-27T10:10:59.380Z",
+  "updatedAt": "2026-07-27T15:15:56.272Z",
   "sourcePage": "https://gga.kr/pds/w_.php",
   "method": "IMOC/JMA wave map color sampling near Busan coast. Values are coarse wave-height bands, not buoy readings.",
   "forecastHours": [
     {
-      "time": "2026-07-27T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_00.png?13541",
+      "time": "2026-07-28T03:00:00+09:00",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_00.png?24593",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 1.25,
           "band": "100-149cm",
-          "sampleCount": 23,
-          "dominantCount": 23,
+          "sampleCount": 58,
+          "dominantCount": 58,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -20,42 +20,22 @@
           }
         },
         "dadaepo": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
-        }
-      }
-    },
-    {
-      "time": "2026-07-27T21:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_02.png?1118",
-      "spots": {
-        "songjeong": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
-        },
-        "dadaepo": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
-        }
-      }
-    },
-    {
-      "time": "2026-07-28T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_04.png?11104",
-      "spots": {
-        "songjeong": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
-        },
-        "dadaepo": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
+          "available": true,
+          "heightM": 1.25,
+          "band": "100-149cm",
+          "sampleCount": 2,
+          "dominantCount": 2,
+          "pixel": {
+            "x": 341,
+            "y": 326,
+            "radius": 7
+          }
         }
       }
     },
     {
       "time": "2026-07-28T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_06.png?26311",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_02.png?24123",
       "spots": {
         "songjeong": {
           "available": false,
@@ -69,7 +49,7 @@
     },
     {
       "time": "2026-07-28T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_08.png?30284",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_04.png?20454",
       "spots": {
         "songjeong": {
           "available": false,
@@ -83,7 +63,7 @@
     },
     {
       "time": "2026-07-28T21:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_10.png?3416",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_06.png?17676",
       "spots": {
         "songjeong": {
           "available": false,
@@ -97,7 +77,7 @@
     },
     {
       "time": "2026-07-29T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_12.png?2563",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_08.png?7016",
       "spots": {
         "songjeong": {
           "available": false,
@@ -111,7 +91,7 @@
     },
     {
       "time": "2026-07-29T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_14.png?12620",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_10.png?24380",
       "spots": {
         "songjeong": {
           "available": false,
@@ -125,7 +105,7 @@
     },
     {
       "time": "2026-07-29T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_16.png?18796",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_12.png?5164",
       "spots": {
         "songjeong": {
           "available": false,
@@ -139,7 +119,7 @@
     },
     {
       "time": "2026-07-29T21:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_18.png?8937",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_14.png?23267",
       "spots": {
         "songjeong": {
           "available": false,
@@ -153,7 +133,7 @@
     },
     {
       "time": "2026-07-30T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_20.png?28940",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_16.png?26592",
       "spots": {
         "songjeong": {
           "available": false,
@@ -167,7 +147,7 @@
     },
     {
       "time": "2026-07-30T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_22.png?31666",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_18.png?30870",
       "spots": {
         "songjeong": {
           "available": false,
@@ -181,7 +161,7 @@
     },
     {
       "time": "2026-07-30T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_24.png?26641",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_20.png?24744",
       "spots": {
         "songjeong": {
           "available": false,
@@ -190,6 +170,42 @@
         "dadaepo": {
           "available": false,
           "reason": "No wave-color pixels sampled near Busan coast"
+        }
+      }
+    },
+    {
+      "time": "2026-07-30T21:00:00+09:00",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_22.png?12193",
+      "spots": {
+        "songjeong": {
+          "available": false,
+          "reason": "No wave-color pixels sampled near Busan coast"
+        },
+        "dadaepo": {
+          "available": false,
+          "reason": "No wave-color pixels sampled near Busan coast"
+        }
+      }
+    },
+    {
+      "time": "2026-07-31T03:00:00+09:00",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_24.png?31309",
+      "spots": {
+        "songjeong": {
+          "available": false,
+          "reason": "No wave-color pixels sampled near Busan coast"
+        },
+        "dadaepo": {
+          "available": true,
+          "heightM": 1.25,
+          "band": "100-149cm",
+          "sampleCount": 96,
+          "dominantCount": 96,
+          "pixel": {
+            "x": 341,
+            "y": 326,
+            "radius": 7
+          }
         }
       }
     }
