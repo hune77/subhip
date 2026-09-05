@@ -1,78 +1,18 @@
 {
-  "updatedAt": "2026-09-05T10:40:13.585Z",
+  "updatedAt": "2026-09-05T20:25:58.167Z",
   "sourcePage": "https://gga.kr/pds/w_.php",
   "method": "IMOC/JMA wave map color sampling near Busan coast. Values are coarse wave-height bands, not buoy readings.",
   "forecastHours": [
     {
-      "time": "2026-09-05T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_00.png?21633",
-      "spots": {
-        "songjeong": {
-          "available": true,
-          "heightM": 2.75,
-          "band": "250-299cm",
-          "sampleCount": 210,
-          "dominantCount": 146,
-          "pixel": {
-            "x": 348,
-            "y": 318,
-            "radius": 7
-          }
-        },
-        "dadaepo": {
-          "available": true,
-          "heightM": 2.75,
-          "band": "250-299cm",
-          "sampleCount": 221,
-          "dominantCount": 197,
-          "pixel": {
-            "x": 341,
-            "y": 326,
-            "radius": 7
-          }
-        }
-      }
-    },
-    {
-      "time": "2026-09-05T21:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_02.png?28350",
-      "spots": {
-        "songjeong": {
-          "available": true,
-          "heightM": 2.75,
-          "band": "250-299cm",
-          "sampleCount": 210,
-          "dominantCount": 106,
-          "pixel": {
-            "x": 348,
-            "y": 318,
-            "radius": 7
-          }
-        },
-        "dadaepo": {
-          "available": true,
-          "heightM": 2.75,
-          "band": "250-299cm",
-          "sampleCount": 217,
-          "dominantCount": 210,
-          "pixel": {
-            "x": 341,
-            "y": 326,
-            "radius": 7
-          }
-        }
-      }
-    },
-    {
       "time": "2026-09-06T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_04.png?226",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_00.png?30265",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.25,
           "band": "300-349cm",
-          "sampleCount": 210,
-          "dominantCount": 158,
+          "sampleCount": 212,
+          "dominantCount": 134,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -81,10 +21,10 @@
         },
         "dadaepo": {
           "available": true,
-          "heightM": 3.25,
-          "band": "300-349cm",
-          "sampleCount": 217,
-          "dominantCount": 181,
+          "heightM": 2.75,
+          "band": "250-299cm",
+          "sampleCount": 219,
+          "dominantCount": 173,
           "pixel": {
             "x": 341,
             "y": 326,
@@ -95,14 +35,14 @@
     },
     {
       "time": "2026-09-06T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_06.png?4145",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_02.png?24653",
       "spots": {
         "songjeong": {
           "available": true,
-          "heightM": 3.25,
-          "band": "300-349cm",
-          "sampleCount": 210,
-          "dominantCount": 136,
+          "heightM": 3.75,
+          "band": "350-399cm",
+          "sampleCount": 212,
+          "dominantCount": 156,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -111,10 +51,10 @@
         },
         "dadaepo": {
           "available": true,
-          "heightM": 3.25,
-          "band": "300-349cm",
-          "sampleCount": 218,
-          "dominantCount": 184,
+          "heightM": 3.75,
+          "band": "350-399cm",
+          "sampleCount": 219,
+          "dominantCount": 157,
           "pixel": {
             "x": 341,
             "y": 326,
@@ -125,14 +65,14 @@
     },
     {
       "time": "2026-09-06T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_08.png?5199",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_04.png?10176",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.25,
           "band": "300-349cm",
           "sampleCount": 210,
-          "dominantCount": 142,
+          "dominantCount": 184,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -143,8 +83,8 @@
           "available": true,
           "heightM": 3.25,
           "band": "300-349cm",
-          "sampleCount": 221,
-          "dominantCount": 177,
+          "sampleCount": 217,
+          "dominantCount": 207,
           "pixel": {
             "x": 341,
             "y": 326,
@@ -155,14 +95,14 @@
     },
     {
       "time": "2026-09-06T21:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_10.png?27738",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_06.png?3913",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.25,
           "band": "300-349cm",
           "sampleCount": 210,
-          "dominantCount": 182,
+          "dominantCount": 174,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -185,14 +125,14 @@
     },
     {
       "time": "2026-09-07T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_12.png?11698",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_08.png?9357",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.25,
           "band": "300-349cm",
           "sampleCount": 210,
-          "dominantCount": 190,
+          "dominantCount": 180,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -204,7 +144,7 @@
           "heightM": 3.25,
           "band": "300-349cm",
           "sampleCount": 221,
-          "dominantCount": 215,
+          "dominantCount": 219,
           "pixel": {
             "x": 341,
             "y": 326,
@@ -215,14 +155,14 @@
     },
     {
       "time": "2026-09-07T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_14.png?9906",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_10.png?4503",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.25,
           "band": "300-349cm",
           "sampleCount": 210,
-          "dominantCount": 184,
+          "dominantCount": 186,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -245,14 +185,14 @@
     },
     {
       "time": "2026-09-07T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_16.png?27609",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_12.png?5280",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.25,
           "band": "300-349cm",
-          "sampleCount": 210,
-          "dominantCount": 132,
+          "sampleCount": 211,
+          "dominantCount": 199,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -263,8 +203,8 @@
           "available": true,
           "heightM": 3.25,
           "band": "300-349cm",
-          "sampleCount": 221,
-          "dominantCount": 173,
+          "sampleCount": 223,
+          "dominantCount": 221,
           "pixel": {
             "x": 341,
             "y": 326,
@@ -275,14 +215,14 @@
     },
     {
       "time": "2026-09-07T21:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_18.png?30452",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_14.png?19005",
       "spots": {
         "songjeong": {
           "available": true,
-          "heightM": 2.75,
-          "band": "250-299cm",
+          "heightM": 3.25,
+          "band": "300-349cm",
           "sampleCount": 210,
-          "dominantCount": 118,
+          "dominantCount": 180,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -294,7 +234,7 @@
           "heightM": 3.25,
           "band": "300-349cm",
           "sampleCount": 221,
-          "dominantCount": 118,
+          "dominantCount": 207,
           "pixel": {
             "x": 341,
             "y": 326,
@@ -305,14 +245,14 @@
     },
     {
       "time": "2026-09-08T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_20.png?26646",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_16.png?16771",
       "spots": {
         "songjeong": {
           "available": true,
-          "heightM": 3.25,
-          "band": "300-349cm",
+          "heightM": 2.75,
+          "band": "250-299cm",
           "sampleCount": 210,
-          "dominantCount": 154,
+          "dominantCount": 210,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -321,10 +261,10 @@
         },
         "dadaepo": {
           "available": true,
-          "heightM": 3.25,
-          "band": "300-349cm",
-          "sampleCount": 218,
-          "dominantCount": 156,
+          "heightM": 2.75,
+          "band": "250-299cm",
+          "sampleCount": 221,
+          "dominantCount": 221,
           "pixel": {
             "x": 341,
             "y": 326,
@@ -335,14 +275,14 @@
     },
     {
       "time": "2026-09-08T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_22.png?24190",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_18.png?7172",
       "spots": {
         "songjeong": {
           "available": true,
-          "heightM": 3.25,
-          "band": "300-349cm",
-          "sampleCount": 210,
-          "dominantCount": 184,
+          "heightM": 2.25,
+          "band": "200-249cm",
+          "sampleCount": 211,
+          "dominantCount": 169,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -351,10 +291,10 @@
         },
         "dadaepo": {
           "available": true,
-          "heightM": 3.25,
-          "band": "300-349cm",
-          "sampleCount": 218,
-          "dominantCount": 182,
+          "heightM": 2.25,
+          "band": "200-249cm",
+          "sampleCount": 223,
+          "dominantCount": 223,
           "pixel": {
             "x": 341,
             "y": 326,
@@ -365,14 +305,14 @@
     },
     {
       "time": "2026-09-08T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_24.png?19765",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_20.png?28469",
       "spots": {
         "songjeong": {
           "available": true,
-          "heightM": 2.75,
-          "band": "250-299cm",
-          "sampleCount": 209,
-          "dominantCount": 207,
+          "heightM": 2.25,
+          "band": "200-249cm",
+          "sampleCount": 210,
+          "dominantCount": 206,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -381,10 +321,70 @@
         },
         "dadaepo": {
           "available": true,
-          "heightM": 2.75,
-          "band": "250-299cm",
-          "sampleCount": 218,
-          "dominantCount": 218,
+          "heightM": 2.25,
+          "band": "200-249cm",
+          "sampleCount": 221,
+          "dominantCount": 213,
+          "pixel": {
+            "x": 341,
+            "y": 326,
+            "radius": 7
+          }
+        }
+      }
+    },
+    {
+      "time": "2026-09-08T21:00:00+09:00",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_22.png?31187",
+      "spots": {
+        "songjeong": {
+          "available": true,
+          "heightM": 2.25,
+          "band": "200-249cm",
+          "sampleCount": 210,
+          "dominantCount": 108,
+          "pixel": {
+            "x": 348,
+            "y": 318,
+            "radius": 7
+          }
+        },
+        "dadaepo": {
+          "available": true,
+          "heightM": 1.75,
+          "band": "150-199cm",
+          "sampleCount": 221,
+          "dominantCount": 214,
+          "pixel": {
+            "x": 341,
+            "y": 326,
+            "radius": 7
+          }
+        }
+      }
+    },
+    {
+      "time": "2026-09-09T03:00:00+09:00",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_24.png?28981",
+      "spots": {
+        "songjeong": {
+          "available": true,
+          "heightM": 1.75,
+          "band": "150-199cm",
+          "sampleCount": 211,
+          "dominantCount": 211,
+          "pixel": {
+            "x": 348,
+            "y": 318,
+            "radius": 7
+          }
+        },
+        "dadaepo": {
+          "available": true,
+          "heightM": 1.75,
+          "band": "150-199cm",
+          "sampleCount": 223,
+          "dominantCount": 223,
           "pixel": {
             "x": 341,
             "y": 326,
