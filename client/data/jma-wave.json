@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-10-03T16:26:11.379Z",
+  "updatedAt": "2026-10-03T21:23:20.829Z",
   "sourcePage": "https://gga.kr/pds/w_.php",
   "method": "IMOC/JMA wave map color sampling near Busan coast. Values are coarse wave-height bands, not buoy readings.",
   "forecastHours": [
     {
       "time": "2026-10-04T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_00.png?26909",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_00.png?28016",
       "spots": {
         "songjeong": {
           "available": true,
@@ -35,7 +35,7 @@
     },
     {
       "time": "2026-10-04T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_02.png?682",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_02.png?30738",
       "spots": {
         "songjeong": {
           "available": true,
@@ -65,7 +65,7 @@
     },
     {
       "time": "2026-10-04T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_04.png?13273",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_04.png?28192",
       "spots": {
         "songjeong": {
           "available": true,
@@ -95,7 +95,7 @@
     },
     {
       "time": "2026-10-04T21:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_06.png?31534",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_06.png?29817",
       "spots": {
         "songjeong": {
           "available": true,
@@ -125,7 +125,7 @@
     },
     {
       "time": "2026-10-05T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_08.png?16324",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_08.png?12168",
       "spots": {
         "songjeong": {
           "available": true,
@@ -155,7 +155,7 @@
     },
     {
       "time": "2026-10-05T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_10.png?20549",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_10.png?201",
       "spots": {
         "songjeong": {
           "available": true,
@@ -185,7 +185,7 @@
     },
     {
       "time": "2026-10-05T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_12.png?19754",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_12.png?15867",
       "spots": {
         "songjeong": {
           "available": true,
@@ -215,7 +215,7 @@
     },
     {
       "time": "2026-10-05T21:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_14.png?26996",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_14.png?28984",
       "spots": {
         "songjeong": {
           "available": true,
@@ -245,7 +245,7 @@
     },
     {
       "time": "2026-10-06T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_16.png?17324",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_16.png?3897",
       "spots": {
         "songjeong": {
           "available": true,
@@ -275,7 +275,7 @@
     },
     {
       "time": "2026-10-06T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_18.png?14839",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_18.png?3724",
       "spots": {
         "songjeong": {
           "available": true,
@@ -305,7 +305,7 @@
     },
     {
       "time": "2026-10-06T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_20.png?27682",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_20.png?11130",
       "spots": {
         "songjeong": {
           "available": true,
@@ -335,7 +335,7 @@
     },
     {
       "time": "2026-10-06T21:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_22.png?13988",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_22.png?23084",
       "spots": {
         "songjeong": {
           "available": true,
@@ -365,7 +365,7 @@
     },
     {
       "time": "2026-10-07T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_24.png?30023",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_24.png?11569",
       "spots": {
         "songjeong": {
           "available": true,
