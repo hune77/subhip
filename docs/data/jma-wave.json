@@ -1,40 +1,18 @@
 {
-  "updatedAt": "2026-10-23T04:57:59.945Z",
+  "updatedAt": "2026-10-23T11:44:48.029Z",
   "sourcePage": "https://gga.kr/pds/w_.php",
   "method": "IMOC/JMA wave map color sampling near Busan coast. Values are coarse wave-height bands, not buoy readings.",
   "forecastHours": [
     {
-      "time": "2026-10-23T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_00.png?21890",
-      "spots": {
-        "songjeong": {
-          "available": true,
-          "heightM": 3.75,
-          "band": "350-399cm",
-          "sampleCount": 20,
-          "dominantCount": 20,
-          "pixel": {
-            "x": 348,
-            "y": 318,
-            "radius": 7
-          }
-        },
-        "dadaepo": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
-        }
-      }
-    },
-    {
       "time": "2026-10-23T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_02.png?1730",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_00.png?6767",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 4,
-          "dominantCount": 4,
+          "sampleCount": 208,
+          "dominantCount": 200,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -42,21 +20,29 @@
           }
         },
         "dadaepo": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
+          "available": true,
+          "heightM": 3.75,
+          "band": "350-399cm",
+          "sampleCount": 225,
+          "dominantCount": 225,
+          "pixel": {
+            "x": 341,
+            "y": 326,
+            "radius": 7
+          }
         }
       }
     },
     {
       "time": "2026-10-23T21:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_04.png?15990",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_02.png?28174",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 2,
-          "dominantCount": 2,
+          "sampleCount": 208,
+          "dominantCount": 206,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -64,21 +50,29 @@
           }
         },
         "dadaepo": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
+          "available": true,
+          "heightM": 3.75,
+          "band": "350-399cm",
+          "sampleCount": 225,
+          "dominantCount": 225,
+          "pixel": {
+            "x": 341,
+            "y": 326,
+            "radius": 7
+          }
         }
       }
     },
     {
       "time": "2026-10-24T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_06.png?29256",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_04.png?25240",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 18,
-          "dominantCount": 18,
+          "sampleCount": 182,
+          "dominantCount": 182,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -86,18 +80,34 @@
           }
         },
         "dadaepo": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
+          "available": true,
+          "heightM": 3.75,
+          "band": "350-399cm",
+          "sampleCount": 122,
+          "dominantCount": 122,
+          "pixel": {
+            "x": 341,
+            "y": 326,
+            "radius": 7
+          }
         }
       }
     },
     {
       "time": "2026-10-24T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_08.png?14265",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_06.png?29378",
       "spots": {
         "songjeong": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
+          "available": true,
+          "heightM": 3.75,
+          "band": "350-399cm",
+          "sampleCount": 22,
+          "dominantCount": 22,
+          "pixel": {
+            "x": 348,
+            "y": 318,
+            "radius": 7
+          }
         },
         "dadaepo": {
           "available": false,
@@ -107,11 +117,19 @@
     },
     {
       "time": "2026-10-24T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_10.png?14068",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_08.png?5962",
       "spots": {
         "songjeong": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
+          "available": true,
+          "heightM": 3.75,
+          "band": "350-399cm",
+          "sampleCount": 2,
+          "dominantCount": 2,
+          "pixel": {
+            "x": 348,
+            "y": 318,
+            "radius": 7
+          }
         },
         "dadaepo": {
           "available": false,
@@ -121,14 +139,14 @@
     },
     {
       "time": "2026-10-24T21:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_12.png?10714",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_10.png?16392",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 2,
-          "dominantCount": 2,
+          "sampleCount": 60,
+          "dominantCount": 60,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -143,7 +161,7 @@
     },
     {
       "time": "2026-10-25T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_14.png?1827",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_12.png?1597",
       "spots": {
         "songjeong": {
           "available": true,
@@ -161,8 +179,8 @@
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 215,
-          "dominantCount": 215,
+          "sampleCount": 178,
+          "dominantCount": 178,
           "pixel": {
             "x": 341,
             "y": 326,
@@ -173,14 +191,14 @@
     },
     {
       "time": "2026-10-25T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_16.png?8136",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_14.png?31521",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 207,
-          "dominantCount": 207,
+          "sampleCount": 170,
+          "dominantCount": 170,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -191,8 +209,8 @@
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 225,
-          "dominantCount": 225,
+          "sampleCount": 21,
+          "dominantCount": 21,
           "pixel": {
             "x": 341,
             "y": 326,
@@ -203,14 +221,14 @@
     },
     {
       "time": "2026-10-25T15:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_18.png?29562",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_16.png?19485",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 209,
-          "dominantCount": 209,
+          "sampleCount": 70,
+          "dominantCount": 70,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -221,8 +239,8 @@
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 225,
-          "dominantCount": 225,
+          "sampleCount": 8,
+          "dominantCount": 8,
           "pixel": {
             "x": 341,
             "y": 326,
@@ -233,14 +251,14 @@
     },
     {
       "time": "2026-10-25T21:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_20.png?21518",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_18.png?26764",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 209,
-          "dominantCount": 205,
+          "sampleCount": 22,
+          "dominantCount": 22,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -251,8 +269,8 @@
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 225,
-          "dominantCount": 225,
+          "sampleCount": 12,
+          "dominantCount": 12,
           "pixel": {
             "x": 341,
             "y": 326,
@@ -263,14 +281,42 @@
     },
     {
       "time": "2026-10-26T03:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_22.png?26688",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_20.png?8393",
+      "spots": {
+        "songjeong": {
+          "available": false,
+          "reason": "No wave-color pixels sampled near Busan coast"
+        },
+        "dadaepo": {
+          "available": false,
+          "reason": "No wave-color pixels sampled near Busan coast"
+        }
+      }
+    },
+    {
+      "time": "2026-10-26T09:00:00+09:00",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_22.png?15698",
+      "spots": {
+        "songjeong": {
+          "available": false,
+          "reason": "No wave-color pixels sampled near Busan coast"
+        },
+        "dadaepo": {
+          "available": false,
+          "reason": "No wave-color pixels sampled near Busan coast"
+        }
+      }
+    },
+    {
+      "time": "2026-10-26T15:00:00+09:00",
+      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_24.png?7206",
       "spots": {
         "songjeong": {
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 208,
-          "dominantCount": 208,
+          "sampleCount": 215,
+          "dominantCount": 161,
           "pixel": {
             "x": 348,
             "y": 318,
@@ -281,27 +327,13 @@
           "available": true,
           "heightM": 3.75,
           "band": "350-399cm",
-          "sampleCount": 225,
-          "dominantCount": 225,
+          "sampleCount": 222,
+          "dominantCount": 161,
           "pixel": {
             "x": 341,
             "y": 326,
             "radius": 7
           }
-        }
-      }
-    },
-    {
-      "time": "2026-10-26T09:00:00+09:00",
-      "imageUrl": "https://www.imocwx.com/cwm/cwmsjp_24.png?25533",
-      "spots": {
-        "songjeong": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
-        },
-        "dadaepo": {
-          "available": false,
-          "reason": "No wave-color pixels sampled near Busan coast"
         }
       }
     }
